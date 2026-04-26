@@ -294,3 +294,58 @@ export async function getHrConfiguration() {
     return response;
   }
 }
+
+export async function getExceptionalLeaves(countryCode) {
+  const country = String(countryCode || "TN").toUpperCase();
+  const { data } = await api.get("/hr-config/exceptional-leaves", {
+    params: { country },
+  });
+  return Array.isArray(data) ? data : [];
+}
+
+export async function createExceptionalLeave(payload) {
+  const { data } = await api.post("/hr-config/exceptional-leaves", payload);
+  return data;
+}
+
+export async function updateExceptionalLeave(id, payload) {
+  const { data } = await api.put(`/hr-config/exceptional-leaves/${id}`, payload);
+  return data;
+}
+
+export async function getPublicHolidays(countryCode, year) {
+  const { data } = await api.get("/hr-config/public-holidays", {
+    params: {
+      country: String(countryCode || "TN").toUpperCase(),
+      year: Number(year),
+    },
+  });
+  return Array.isArray(data) ? data : [];
+}
+
+export async function importPublicHolidays(countryCode, year) {
+  const { data } = await api.post("/hr-config/public-holidays/import", null, {
+    params: {
+      country: String(countryCode || "TN").toUpperCase(),
+      year: Number(year),
+    },
+  });
+  return data;
+}
+
+export async function createPublicHoliday(payload) {
+  const { data } = await api.post("/hr-config/public-holidays", payload);
+  return data;
+}
+
+export async function applyPublicHoliday(id, applied) {
+  const { data } = await api.put(`/hr-config/public-holidays/${id}/apply`, null, {
+    params: { applied: Boolean(applied) },
+  });
+  return data;
+}
+
+export async function deletePublicHoliday(id) {
+  const { data } = await api.delete(`/hr-config/public-holidays/${id}`);
+  return data;
+}

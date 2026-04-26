@@ -31,7 +31,7 @@ function App() {
 export default App;
 
 function AppRoutes() {
-  const { loading, isAuthenticated, isEmployee } = useAuth();
+  const { loading, isAuthenticated, isEmployee, isRH } = useAuth();
 
   // Eviter de rediriger pendant le chargement de session.
   if (loading) return null;
@@ -42,7 +42,12 @@ function AppRoutes() {
       <Routes>
         <Route
           path="/"
-          element={<Navigate to={"/employee/dashboard"} replace />}
+          element={
+            <Navigate
+              to={isRH ? "/rh/dashboard" : "/employee/dashboard"}
+              replace
+            />
+          }
         />
         <Route path="/login" element={<Login />} />
 
@@ -58,9 +63,9 @@ function AppRoutes() {
         <Route
           path="/rh/jours-feries"
           element={
-            <RequireRH>
+            
               <JoursFeries />
-            </RequireRH>
+        
           }
         />
         <Route
@@ -82,9 +87,10 @@ function AppRoutes() {
         <Route
           path="/rh/calendar"
           element={
-            <RequireRH>
+        
+            
               <CalendarRh />
-            </RequireRH>
+           
           }
         />
         <Route
@@ -98,9 +104,9 @@ function AppRoutes() {
         <Route
           path="/rh/decisions"
           element={
-            <RequireRH>
+            
               <DecisionModule />
-            </RequireRH>
+           
           }
         />
 
@@ -136,7 +142,7 @@ function RequireEmployee({ children }) {
 
   if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!isEmployee) return <Navigate to="/home" replace />;
+  if (!isEmployee) return <Navigate to="/rh/dashboard" replace />;
 
   return children;
 }

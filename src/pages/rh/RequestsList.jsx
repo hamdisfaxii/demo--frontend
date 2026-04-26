@@ -45,9 +45,9 @@ export default function RequestsList() {
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">Tous</option>
-              <option value="PENDING">PENDING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="REJECTED">REJECTED</option>
+              <option value="PENDING">En attente</option>
+              <option value="APPROVED">Approuvé</option>
+              <option value="REJECTED">Rejeté</option>
             </select>
             <input
               value={filters.employee}

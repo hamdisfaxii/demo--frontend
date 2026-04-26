@@ -14,7 +14,9 @@ export const loginAPI = (email, password) => {
 
 // Optionnel : pour vérifier si le token est encore valide au démarrage
 export const getCurrentUserAPI = () => {
-  // J'envoie une requête GET au backend avec le token (ajouté automatiquement par l'intercepteur)
-  return api.get("/auth/current-user");
-  // Le backend vérifie le token et renvoie les infos de l'utilisateur
+  // Compat multi-backend: on privilégie /auth/me, sinon fallback /auth/current-user
+  return api.get("/auth/me").catch((err) => {
+    if (err?.response?.status !== 404) throw err;
+    return api.get("/auth/current-user");
+  });
 };

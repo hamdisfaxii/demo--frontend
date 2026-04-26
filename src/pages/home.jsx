@@ -40,7 +40,7 @@ export default function Home() {
                 to="/rh/dashboard"
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               >
-                Dashboard RH
+                Tableau de bord RH
               </Link>
               <Link
                 to="/rh/decisions"

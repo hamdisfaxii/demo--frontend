@@ -4,7 +4,7 @@ import { useAuth } from "../context/authcontext";
 
 export default function Navbar() {
   const { isEmployee, isRH, logout } = useAuth();
-  const homePath = isEmployee ? "/employee/dashboard" : "/home";
+  const homePath = isEmployee ? "/employee/dashboard" : "/rh/dashboard";
 
   return (
     <div className="flex items-center justify-between px-8 py-5 border-b border-slate-700 bg-slate-900">
@@ -23,14 +23,6 @@ export default function Navbar() {
         >
           Accueil
         </Link>
-        {isRH && (
-          <Link
-            to="/rh/dashboard"
-            className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-all duration-200 font-medium"
-          >
-            Dashboard RH
-          </Link>
-        )}
         {isRH && (
           <Link
             to="/rh/decisions"
@@ -60,7 +52,7 @@ export default function Navbar() {
             to="/rh/configuration"
             className="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-all duration-200 font-medium"
           >
-            Configuration
+            Paramètres
           </Link>
         )}
         {isRH && (

@@ -65,7 +65,7 @@ export default function HrDashboard() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto px-6 py-10">
         <h1 className="text-4xl font-bold text-slate-900 fade-in-up">
-          Dashboard RH
+          Tableau de bord RH
         </h1>
         <p className="mt-3 text-sm text-slate-600 fade-in-up" style={{ animationDelay: "0.05s" }}>
           Vue globale des décisions et du workflow des demandes de congé.

@@ -45,9 +45,21 @@ const normalizeRole = (rawRole) => {
 const getHomePathForRole = (rawRole) => {
   const role = normalizeRole(rawRole);
   if (role === "EMPLOYEE") return "/employee/dashboard";
-  if (role === "RH") return "/home";
+  if (role === "RH") return "/rh/dashboard";
   // Si le rôle n'est pas reconnu, on ne donne pas d'accès.
   return "/login";
+};
+
+const normalizeCountry = (rawCountry) => {
+  const c = String(rawCountry ?? "")
+    .trim()
+    .toUpperCase();
+  if (!c) return "";
+  if (c === "TN" || c === "FR" || c === "MA") return c;
+  if (c.includes("TUNIS")) return "TN";
+  if (c.includes("FRANCE")) return "FR";
+  if (c.includes("MAROC") || c.includes("MOROCCO")) return "MA";
+  return c;
 };
 
 // ============================================
@@ -107,10 +119,12 @@ export const AuthProvider = ({ children }) => {
           const name =
             data.name ?? data.fullName ?? data.user?.fullName ?? data.user?.name;
           const userData = {
+            id: data.id ?? data.user?.id ?? restoredUser?.id,
             email: email || restoredUser?.email,
             name: name || email || restoredUser?.email,
             role: normalizeRole(role),
             rawRole: role,
+            country: normalizeCountry(data.pays ?? data.country ?? data.user?.pays ?? data.user?.country),
           };
           setUser(userData);
         } catch {
@@ -152,10 +166,12 @@ export const AuthProvider = ({ children }) => {
 
       // Je crée un objet utilisateur avec les infos
       const userData = {
+        id: data.id ?? data.user?.id,
         email: emailFromApi || email,
         name: name || emailFromApi || email, // Si pas de nom, j'utilise l'email
         role: normalizeRole(role),
         rawRole: role,
+        country: normalizeCountry(data.pays ?? data.country ?? data.user?.pays ?? data.user?.country),
       };
 
       // Je stocke dans localStorage (pour que ça reste après fermeture)

@@ -41,6 +41,13 @@ const statusBadgeClass = (status) => {
   return "bg-slate-100 text-slate-700";
 };
 
+const statusLabel = (status) => {
+  if (status === "PENDING") return "EN ATTENTE";
+  if (status === "APPROVED") return "APPROUVÉ";
+  if (status === "REJECTED") return "REJETÉ";
+  return status;
+};
+
 export default function DecisionModule() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -237,7 +244,7 @@ export default function DecisionModule() {
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 hover:shadow-lg transition-all"
               disabled={loading}
             >
-              Charger les demandes PENDING
+              Charger les demandes en attente
             </button>
             <button
               type="button"
@@ -324,7 +331,7 @@ export default function DecisionModule() {
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(status)}`}
                         >
-                          {status}
+                          {statusLabel(status)}
                         </span>
                       </td>
                       <td className="p-4">
@@ -341,7 +348,7 @@ export default function DecisionModule() {
                               })
                             }
                           >
-                            Approve
+                            Approuver
                           </button>
                           <button
                             type="button"
@@ -355,7 +362,7 @@ export default function DecisionModule() {
                               })
                             }
                           >
-                            Reject
+                            Rejeter
                           </button>
                         </div>
                       </td>
@@ -378,7 +385,7 @@ export default function DecisionModule() {
           <div className="relative z-10 flex h-full items-center justify-center p-4">
             <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
               <h3 className="text-xl font-bold text-slate-900">
-                {modal.action === "APPROVE" ? "Approve request" : "Reject request"}
+                {modal.action === "APPROVE" ? "Approuver la demande" : "Rejeter la demande"}
               </h3>
               <p className="mt-2 text-sm text-slate-600">
                 Ajoutez un commentaire optionnel pour traçabilité BPM et synchronisation.
