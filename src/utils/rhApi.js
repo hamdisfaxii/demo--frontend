@@ -99,47 +99,120 @@ const filterRows = (rows, filters = {}) =>
     return byStatus && byEmployee && byCountry && byDepartment && byStart && byEnd;
   });
 
+/** Nombre fini ou NaN (évite de traiter "" ou null comme 0 trop tôt). */
+function toFiniteNumber(v) {
+  if (v == null || v === "") return NaN;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Premier scalaire numérique exploitable dans l’ordre de priorité. */
+function pickFirstFinite(...candidates) {
+  for (const c of candidates) {
+    const n = toFiniteNumber(c);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
+}
+
+/**
+ * Extrait EN_ATTENTE / ACCEPTE / REFUSE depuis demandesParStatut (clés enum Java,
+ * éventuellement préfixées par le package, ou snake_case côté autre API).
+ */
+function extractCountsFromDemandesParStatut(data) {
+  const raw =
+    data?.demandesParStatut ??
+    data?.demandes_par_statut ??
+    null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { enAttente: NaN, acceptees: NaN, refusees: NaN };
+  }
+  let enAttente = NaN;
+  let acceptees = NaN;
+  let refusees = NaN;
+  for (const [k, val] of Object.entries(raw)) {
+    let key = String(k).trim();
+    if (key.includes(".")) {
+      key = key.split(".").pop() || key;
+    }
+    key = key
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+    const n = toFiniteNumber(val);
+    if (!Number.isFinite(n)) continue;
+    if (key === "EN_ATTENTE") enAttente = n;
+    else if (key === "ACCEPTE") acceptees = n;
+    else if (key === "REFUSE") refusees = n;
+  }
+  return { enAttente, acceptees, refusees };
+}
+
 export async function getHrStats() {
   try {
-    // Compatible with both Spring backend and current mock backend.
+    // Spring : demandesAcceptees / demandesParStatut ; mock : statistiques + mêmes champs explicites.
     const { data } = await api.get("/rh/dashboard");
-    const statsMap = data?.statistiques ?? data?.demandesParStatut ?? {};
-    const pending = Number(
-      data?.pending ??
-        statsMap?.en_attente ??
-        statsMap?.EN_ATTENTE ??
-        0,
+    const leg = data?.statistiques ?? {};
+    const fromMap = extractCountsFromDemandesParStatut(data);
+
+    const pending = pickFirstFinite(
+      data?.pending,
+      data?.demandesEnAttente,
+      data?.demandes_en_attente,
+      leg?.en_attente,
+      fromMap.enAttente,
     );
-    const approved = Number(
-      data?.approved ??
-        statsMap?.approuvees ??
-        statsMap?.ACCEPTE ??
-        0,
+    const approved = pickFirstFinite(
+      data?.approved,
+      data?.demandesAcceptees,
+      data?.demandes_acceptees,
+      leg?.approuvees,
+      fromMap.acceptees,
     );
-    const rejected = Number(
-      data?.rejected ??
-        statsMap?.rejetees ??
-        statsMap?.REFUSE ??
-        0,
+    const rejected = pickFirstFinite(
+      data?.rejected,
+      data?.demandesRefusees,
+      data?.demandes_refusees,
+      leg?.rejetees,
+      fromMap.refusees,
     );
+    const totalCandidate = toFiniteNumber(
+      data?.total ?? data?.demandesTotal ?? data?.demandes_total ?? leg?.total_demandes,
+    );
+    const sumParts = pending + approved + rejected;
+    const total = Number.isFinite(totalCandidate)
+      ? Math.max(totalCandidate, sumParts)
+      : sumParts;
     return {
       pending,
       approved,
       rejected,
-      total: Number(data?.total ?? pending + approved + rejected),
+      total,
     };
   } catch (e) {
     if (e?.response?.status !== 404) {
       throw e;
     }
-    // Fallback for future backend variants.
-    const { data } = await api.get("/hr/requests/stats");
-    return {
-      pending: Number(data?.pending ?? 0),
-      approved: Number(data?.approved ?? 0),
-      rejected: Number(data?.rejected ?? 0),
-      total: Number(data?.total ?? 0),
-    };
+    try {
+      const { data } = await api.get("/rh/stats");
+      const pending = Number(data?.pending ?? 0);
+      const approved = Number(data?.approved ?? 0);
+      const rejected = Number(data?.rejected ?? 0);
+      return {
+        pending,
+        approved,
+        rejected,
+        total: Number(data?.total ?? pending + approved + rejected),
+      };
+    } catch {
+      const { data } = await api.get("/hr/requests/stats");
+      return {
+        pending: Number(data?.pending ?? 0),
+        approved: Number(data?.approved ?? 0),
+        rejected: Number(data?.rejected ?? 0),
+        total: Number(data?.total ?? 0),
+      };
+    }
   }
 }
 
@@ -314,7 +387,8 @@ export async function getPublicHolidays(countryCode, year) {
 }
 
 export async function importPublicHolidays(countryCode, year) {
-  const { data } = await api.post("/hr-config/public-holidays/import", null, {
+  // Corps JSON minimal : axios envoie par défaut Content-Type application/json ; un corps vide + ce header peut provoquer un 400 côté Spring.
+  const { data } = await api.post("/hr-config/public-holidays/import", {}, {
     params: {
       country: String(countryCode || "TN").toUpperCase(),
       year: Number(year),
@@ -325,7 +399,7 @@ export async function importPublicHolidays(countryCode, year) {
 
 /** Synchronise les jours fériés officiels (Nager + repli) pour tous les pays RH (TN, FR, MA). */
 export async function importPublicHolidaysAllCountries(year) {
-  const { data } = await api.post("/hr-config/public-holidays/import-all", null, {
+  const { data } = await api.post("/hr-config/public-holidays/import-all", {}, {
     params: { year: Number(year) },
   });
   return data;
@@ -337,7 +411,7 @@ export async function createPublicHoliday(payload) {
 }
 
 export async function applyPublicHoliday(id, applied) {
-  const { data } = await api.put(`/hr-config/public-holidays/${id}/apply`, null, {
+  const { data } = await api.put(`/hr-config/public-holidays/${id}/apply`, {}, {
     params: { applied: Boolean(applied) },
   });
   return data;

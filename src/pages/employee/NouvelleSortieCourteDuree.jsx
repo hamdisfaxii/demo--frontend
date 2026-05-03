@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import { useAuth } from "../../context/authcontext";
@@ -41,7 +41,6 @@ export default function NouvelleSortieCourteDuree() {
   const [heureDebut, setHeureDebut] = useState("");
   const [heureFin, setHeureFin] = useState("");
   const [motif, setMotif] = useState("");
-  const [motifCategorie, setMotifCategorie] = useState("rendez_vous");
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -73,18 +72,6 @@ export default function NouvelleSortieCourteDuree() {
       setHeureFin(addMinutesToTimeString(heureDebut, FIXED_MINUTES));
     }
   }, [fr, heureDebut]);
-
-  const motifComplet = useMemo(() => {
-    if (fr) return motif.trim();
-    const labels = {
-      rendez_vous: "2h rendez-vous",
-      urgence: "2h urgence",
-      autorisation: "2h autorisation",
-    };
-    const prefix = labels[motifCategorie] || "2h autorisation";
-    const detail = motif.trim();
-    return detail ? `${prefix} — ${detail}` : prefix;
-  }, [fr, motif, motifCategorie]);
 
   if (authLoading) {
     return (
@@ -140,23 +127,15 @@ export default function NouvelleSortieCourteDuree() {
       return;
     }
 
-    if (!fr && !motifComplet.trim()) {
-      setFormError("Veuillez compléter le motif.");
-      return;
-    }
-
-    if (fr && !motif.trim()) {
+    if (!motif.trim()) {
       setFormError("Veuillez renseigner le motif.");
       return;
     }
 
     if (!fr) {
-      const capRest =
-        typeof restantes === "number" ? restantes : maxMois;
+      const capRest = typeof restantes === "number" ? restantes : maxMois;
       if (capRest <= 0) {
-        setFormError(
-          "Limite mensuelle de 3 autorisations courtes atteinte.",
-        );
+        setFormError("Limite mensuelle de 3 autorisations courtes atteinte.");
         return;
       }
       const md = minutesDelta(heureDebut, heureFin);
@@ -177,7 +156,7 @@ export default function NouvelleSortieCourteDuree() {
         dateFin: dFin,
         heureDebut,
         heureFin,
-        motif: fr ? motif.trim() : motifComplet.trim(),
+        motif: motif.trim(),
       });
       navigate("/employee/historique");
     } catch (err) {
@@ -186,9 +165,7 @@ export default function NouvelleSortieCourteDuree() {
         err?.response?.data?.message ??
         (typeof err?.message === "string" ? err.message : null);
       setFormError(
-        apiMsg ||
-          error ||
-          "Erreur lors de l'ajout de la demande de sortie.",
+        apiMsg || error || "Erreur lors de l'ajout de la demande de sortie.",
       );
     } finally {
       setSubmitting(false);
@@ -220,9 +197,7 @@ export default function NouvelleSortieCourteDuree() {
 
         <div
           className={`mt-6 rounded-xl border px-5 py-4 ${
-            fr
-              ? "border-violet-200 bg-violet-50"
-              : "border-amber-200 bg-amber-50"
+            fr ? "border-violet-200 bg-violet-50" : "border-amber-200 bg-amber-50"
           }`}
         >
           <div
@@ -233,16 +208,10 @@ export default function NouvelleSortieCourteDuree() {
             {fr ? "Solde RTT / sortie courte (jours)" : "Autorisations 2 h ce mois-ci"}
           </div>
           <div
-            className={`mt-1 text-xl font-bold ${
-              fr ? "text-violet-950" : "text-amber-950"
-            }`}
+            className={`mt-1 text-xl font-bold ${fr ? "text-violet-950" : "text-amber-950"}`}
           >
             {fr ? (
-              <>
-                {soldeSummary
-                  ? `${soldeSummary.permission} jour(s)`
-                  : "—"}
-              </>
+              <>{soldeSummary ? `${soldeSummary.permission} jour(s)` : "—"}</>
             ) : (
               <>
                 {typeof utilisees === "number" && typeof restantes === "number" ? (
@@ -261,9 +230,7 @@ export default function NouvelleSortieCourteDuree() {
         </div>
 
         {(loading || submitting) && (
-          <div className="mt-4 text-sm font-medium text-slate-600">
-            Chargement...
-          </div>
+          <div className="mt-4 text-sm font-medium text-slate-600">Chargement...</div>
         )}
         {error && (
           <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
@@ -281,8 +248,7 @@ export default function NouvelleSortieCourteDuree() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
-                {fr ? "Date début" : "Date"}{" "}
-                <span className="text-red-500">*</span>
+                {fr ? "Date début" : "Date"} <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -312,22 +278,7 @@ export default function NouvelleSortieCourteDuree() {
                   required
                 />
               </div>
-            ) : (
-              <div className="sm:col-span-2">
-                <label className="text-sm font-semibold text-slate-700 block mb-2">
-                  Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={motifCategorie}
-                  onChange={(e) => setMotifCategorie(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="rendez_vous">2h rendez-vous</option>
-                  <option value="urgence">2h urgence</option>
-                  <option value="autorisation">2h autorisation</option>
-                </select>
-              </div>
-            )}
+            ) : null}
 
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
@@ -365,19 +316,16 @@ export default function NouvelleSortieCourteDuree() {
 
             <div className="sm:col-span-2">
               <label className="text-sm font-semibold text-slate-700 block mb-2">
-                {fr ? "Motif" : "Précision (optionnel)"}{" "}
-                {fr ? <span className="text-red-500">*</span> : null}
+                Motif <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 className="w-full min-h-[120px] resize-y border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder={
-                  fr
-                    ? "Ex. RTT journée, départ anticipé, etc."
-                    : "Détail libre (ex. motif du rendez-vous)"
+                  fr ? "Ex. RTT journée, départ anticipé, etc." : "Ex. autorisation 2 h, motif du déplacement…"
                 }
-                required={fr}
+                required
               />
             </div>
           </div>
@@ -386,9 +334,7 @@ export default function NouvelleSortieCourteDuree() {
             <div className="mt-6 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="text-red-500 mt-0.5">⚠️</div>
-                <div className="text-sm font-medium text-red-700">
-                  {formError}
-                </div>
+                <div className="text-sm font-medium text-red-700">{formError}</div>
               </div>
             </div>
           )}

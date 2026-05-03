@@ -16,25 +16,12 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
   const showFranceSortieCourte = isFranceSortieCourteEligible(employeeCountry);
 
   if (soldeSummary) {
-    const {
-      congesPayes,
-      permission,
-      maladie,
-      maladieNonDecompte,
-      maladieMessage,
-      hintCongesPayes,
-      soldeTotalTousTypes,
-      franceRtt,
-    } = soldeSummary;
+    const { congesPayes, permission, maladie, franceRtt } = soldeSummary;
 
     const malNum = Number(maladie);
     const joursMal = Number.isFinite(malNum) ? Math.max(0, malNum) : 0;
-    const maladieSousTexte =
-      typeof maladieMessage === "string" && maladieMessage.trim()
-        ? maladieMessage
-        : maladieNonDecompte
-          ? "Suivi hors quota décompté dans cette application."
-          : null;
+    /** Plus affiché ; identifiant conservé pour éviter une ReferenceError si HMR référence encore l’ancien code. */
+    const maladieSousTexte = null;
 
     const showShortLeaveCardFrance = showFranceSortieCourte;
     const shortNonFrMax = soldeSummary.autorisationsCourtesMoisMaximum;
@@ -148,30 +135,7 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                   "border-amber-600",
                 )
               : null}
-          {bloc(
-            "Congé maladie",
-            joursMal,
-            maladieSousTexte,
-            "border-teal-600",
-          )}
-        </div>
-
-        <div className="mt-5 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-xs text-slate-600 leading-relaxed">
-          <p>
-            {hintCongesPayes ||
-              (showFranceSortieCourte
-                ? "Le solde principal affiché correspond aux congés payés. RTT et maladie sont des compteurs séparés."
-                : showShortLeaveCardIntl
-                  ? "Congés payés, maladie et autorisations courtes sont indépendants."
-                  : "Le solde principal affiché correspond aux congés payés. La maladie est un compteur distinct.")}
-          </p>
-            {typeof soldeTotalTousTypes === "number" && Number.isFinite(soldeTotalTousTypes) ? (
-              <p className="mt-2 text-slate-500">
-                Indicateur agrégé (optionnel / debug) tous types avec quota positif environ{" "}
-                <strong>{soldeTotalTousTypes}</strong> jours au total — à ne pas confondre avec le
-                bloc « Congés payés ».
-              </p>
-            ) : null}
+          {bloc("Congé maladie", joursMal, maladieSousTexte, "border-teal-600")}
         </div>
       </div>
     );

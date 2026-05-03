@@ -550,16 +550,24 @@ export default function GlobalWorkCalendar({
                                 </div>
                               ))}
                               {hiddenCount > 0 && (
-                                <button
-                                  type="button"
-                                  className="w-full text-left px-1 py-0 text-[10px] font-semibold text-slate-600 hover:text-slate-900 truncate"
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  className="w-full block text-left px-1 py-0 text-[10px] font-semibold text-slate-600 hover:text-slate-900 truncate cursor-pointer"
                                   onClick={(ev) => {
                                     ev.stopPropagation();
                                     setPopoverIso(cell.iso);
                                   }}
+                                  onKeyDown={(ev) => {
+                                    if (ev.key === "Enter" || ev.key === " ") {
+                                      ev.preventDefault();
+                                      ev.stopPropagation();
+                                      setPopoverIso(cell.iso);
+                                    }
+                                  }}
                                 >
                                   +{hiddenCount} autres
-                                </button>
+                                </span>
                               )}
                             </div>
                           </button>
