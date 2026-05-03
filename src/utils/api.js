@@ -8,25 +8,34 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" }, // j'envoie du JSON
 });
 
-// Intercepteur : ajoute le token automatiquement à chaque requête
+// Intercepteur : ajoute le token sauf sur la connexion (évite d’envoyer un JWT expiré avec le POST login — certains pare-feu / stacks réagissent mal).
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const path = String(config.url ?? "");
+  const isLoginPost =
+    path.includes("auth/login") &&
+    String(config.method ?? "get").toLowerCase() === "post";
+  if (!isLoginPost) {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } else if (config.headers?.Authorization) {
+    delete config.headers.Authorization;
   }
   return config;
 });
 
-// Sécurité: si le backend répond 401 (token expiré / invalide),
-// on purge la session côté frontend.
+// 401 hors tentative de login : session invalide → purge. Un mauvais mot de passe sur /auth/login ne doit pas effacer une session ni déclencher logout global.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      // Permet aux composants (AuthContext) de réagir.
-      window.dispatchEvent(new Event("auth:logout"));
+      const url = String(error.config?.url ?? "");
+      if (!url.includes("auth/login")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.dispatchEvent(new Event("auth:logout"));
+      }
     }
     return Promise.reject(error);
   },

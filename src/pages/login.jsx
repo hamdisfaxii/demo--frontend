@@ -2,33 +2,94 @@ import React, { useState } from "react";
 import { useAuth } from "../context/authcontext";
 import { useNavigate } from "react-router-dom";
 
-const getLoginErrorMessage = (err) => {
-  if (err?.response?.status === 401) {
-    return (
-      err.response?.data?.error ||
-      "Email ou mot de passe incorrect. Verifiez vos identifiants."
-    );
-  }
+/** Corps JSON Spring, mock Node, etc. */
+function readApiErrorPayload(err) {
+  const d = err?.response?.data;
+  if (d == null) return { code: null, text: null, detail: null };
+  if (typeof d === "string") return { code: null, text: d, detail: null };
+  const code = d.code ?? d.errorCode ?? null;
+  const text =
+    d.error ??
+    d.message ??
+    d.title ??
+    (Array.isArray(d.errors) && d.errors[0]?.defaultMessage) ??
+    null;
+  const detail = d.detail ?? d.path ?? null;
+  return { code, text, detail };
+}
 
-  if (err?.response?.status >= 500) {
-    return "Le serveur a rencontre une erreur. Veuillez reessayer dans quelques instants.";
-  }
+/**
+ * Message lisible sur la page /login (2 lignes : type + explication), sans ouvrir la console.
+ */
+function getLoginErrorMessage(err) {
+  const status = err?.response?.status;
+  const { code, text, detail } = readApiErrorPayload(err);
 
-  // Cas: backend eteint / port incorrect / CORS reseau (pas de reponse HTTP).
   if (!err?.response || err?.code === "ERR_NETWORK") {
-    return "Connexion impossible au serveur API (http://localhost:8080). Verifiez que le backend est demarre.";
+    return [
+      "Impossible de joindre le serveur",
+      "Vérifiez que le backend est démarré (http://localhost:8080) et que le pare-feu ne bloque pas la connexion.",
+    ].join("\n");
   }
 
   if (err?.code === "ECONNABORTED") {
-    return "Le serveur met trop de temps a repondre. Veuillez reessayer.";
+    return ["Délai d’attente dépassé", "Le serveur ne répond pas assez vite. Réessayez."].join("\n");
   }
 
-  return (
-    err?.response?.data?.error ||
-    err?.message ||
-    "Une erreur est survenue. Veuillez reessayer."
-  );
-};
+  if (status === 400 && code === "MISSING_CREDENTIALS") {
+    return ["Champs incomplets", text || "Saisissez votre email et votre mot de passe."].join("\n");
+  }
+
+  if (status === 401) {
+    if (code === "USER_NOT_FOUND") {
+      return [
+        "Compte inconnu",
+        text || "Aucun utilisateur n’est enregistré avec cet email. Vérifiez l’orthographe ou contactez le RH.",
+      ].join("\n");
+    }
+    if (code === "INVALID_PASSWORD") {
+      return [
+        "Mot de passe incorrect",
+        text || "Le mot de passe ne correspond pas au compte. Vérifiez les majuscules / minuscules.",
+      ].join("\n");
+    }
+    const low = String(text || "").toLowerCase();
+    if (low.includes("utilisateur") && low.includes("trouv")) {
+      return [
+        "Compte inconnu",
+        text || "Aucun utilisateur avec cet email.",
+      ].join("\n");
+    }
+    if (low.includes("mot de passe") || low.includes("password") || low.includes("identifiants")) {
+      return ["Connexion refusée", text || "Email ou mot de passe incorrect."].join("\n");
+    }
+    return ["Connexion refusée (401)", text || "Identifiants refusés par le serveur."].join("\n");
+  }
+
+  if (status === 403) {
+    return ["Accès refusé", text || "Vous n’avez pas la permission de vous connecter ici."].join("\n");
+  }
+
+  if (status >= 500) {
+    const extra = detail ? `\n${detail}` : "";
+    return [
+      `Erreur serveur (${status})`,
+      (text || "Une erreur technique s’est produite. Réessayez dans quelques instants.") + extra,
+    ].join("\n");
+  }
+
+  if (status === 404) {
+    return [
+      "Service introuvable (404)",
+      "L’URL de connexion n’existe pas sur ce serveur. Vérifiez la configuration du frontend (base URL API).",
+    ].join("\n");
+  }
+
+  return [
+    status ? `Erreur ${status}` : "Erreur",
+    text || err?.message || "Une erreur est survenue. Réessayez.",
+  ].join("\n");
+}
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -69,9 +130,19 @@ function Login() {
 
         <div>
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg text-sm font-medium flex items-start gap-2">
-              <div className="mt-0.5">⚠️</div>
-              <div>{error}</div>
+            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg text-sm flex items-start gap-2">
+              <div className="mt-0.5 shrink-0">⚠️</div>
+              <div className="min-w-0 whitespace-pre-line leading-relaxed">
+                {error.split("\n").map((line, i) => (
+                  <span key={i} className="block">
+                    {i === 0 ? (
+                      <span className="font-semibold text-red-800">{line}</span>
+                    ) : (
+                      <span className="font-normal text-red-700 mt-1 block">{line}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
