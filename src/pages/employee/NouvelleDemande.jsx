@@ -5,7 +5,15 @@ import { calculerJoursOuvres } from "../../utils/calculJours";
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
-  const { solde, loading, error, fetchSolde, creerDemande } = useDemandes();
+  const { solde, soldeSummary, loading, error, fetchSolde, creerDemande } =
+    useDemandes();
+
+  const soldeCongesPayes =
+    typeof soldeSummary?.congesPayes === "number"
+      ? soldeSummary.congesPayes
+      : typeof solde === "number"
+        ? solde
+        : 0;
 
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
@@ -48,15 +56,24 @@ export default function NouvelleDemande() {
       return;
     }
 
-    if (typeof solde === "number" && nbJours > solde) {
-      setFormError("Vous n'avez pas assez de jours disponibles.");
-      return;
-    }
-
     if (!titre) {
       setFormError("Veuillez sélectionner le type de congé.");
       return;
     }
+
+    const titreNormalise = String(titre || "").toLowerCase();
+    const doitVerifierSoldePaye =
+      titreNormalise.includes("payé") && !titreNormalise.includes("sans solde");
+
+    if (
+      doitVerifierSoldePaye &&
+      typeof soldeCongesPayes === "number" &&
+      nbJours > soldeCongesPayes
+    ) {
+      setFormError("Vous n'avez pas assez de jours de congés payés disponibles.");
+      return;
+    }
+
     if (
       titre === "Congé maladie" &&
       Date.now() - new Date(dateDebut) > 1000 * 60 * 60 * 48
@@ -105,7 +122,12 @@ export default function NouvelleDemande() {
               Solde disponible
             </div>
             <div className="mt-2 text-2xl font-bold text-blue-900">
-              {typeof solde === "number" ? `${solde} jours` : "—"}
+              {typeof soldeCongesPayes === "number"
+                ? `${soldeCongesPayes} jours`
+                : "—"}
+              <span className="block text-sm font-semibold text-blue-800/90 mt-2">
+                (Congés payés uniquement — maladie / sans solde : pas de même quota)
+              </span>
             </div>
           </div>
         </div>

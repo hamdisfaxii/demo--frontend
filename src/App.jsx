@@ -38,7 +38,7 @@ function AppRoutes() {
 
   return (
     <>
-      <Navbar />
+      {isAuthenticated && <Navbar />}
       <Routes>
         <Route
           path="/"
@@ -55,73 +55,108 @@ function AppRoutes() {
         <Route
           path="/rh/dashboard"
           element={
-           
+            <RequireRH>
               <HrDashboard />
-           
+            </RequireRH>
           }
         />
         <Route
           path="/rh/jours-feries"
           element={
-            
+            <RequireRH>
               <JoursFeries />
-        
+            </RequireRH>
           }
         />
         <Route
           path="/rh/requests"
           element={
-           
+            <RequireRH>
               <RequestsList />
-           
+            </RequireRH>
           }
         />
         <Route
           path="/rh/requests/:id"
           element={
-            
+            <RequireRH>
               <RequestDetailsRh />
-            
+            </RequireRH>
           }
         />
         <Route
           path="/rh/calendar"
           element={
-        
-            
+            <RequireRH>
               <CalendarRh />
-           
+            </RequireRH>
           }
         />
         <Route
           path="/rh/configuration"
           element={
-            
+            <RequireRH>
               <ConfigurationRh />
-          
+            </RequireRH>
           }
         />
         <Route
           path="/rh/decisions"
           element={
-            
+            <RequireRH>
               <DecisionModule />
-           
+            </RequireRH>
           }
         />
 
-        <Route path="/employee/dashboard" element={<DashboardEmploye />} />
-        <Route path="/employee/conge/new" element={<NouvelleDemande />} />
-        <Route path="/employee/teletravail/new" element={<NouvelleDemande />} />
+        <Route
+          path="/employee/dashboard"
+          element={
+            <RequireEmployee>
+              <DashboardEmploye />
+            </RequireEmployee>
+          }
+        />
+        <Route
+          path="/employee/conge/new"
+          element={
+            <RequireEmployee>
+              <NouvelleDemande />
+            </RequireEmployee>
+          }
+        />
+        <Route
+          path="/employee/teletravail/new"
+          element={
+            <RequireEmployee>
+              <NouvelleDemande />
+            </RequireEmployee>
+          }
+        />
         <Route
           path="/employee/sortie/new"
-          element={<NouvelleSortieCourteDuree />}
+          element={
+            <RequireEmployee>
+              <NouvelleSortieCourteDuree />
+            </RequireEmployee>
+          }
         />
         <Route
           path="/employee/retard/new"
-          element={<NouvelleDemandeRetard />}
+          element={
+            <RequireEmployee>
+              <NouvelleDemandeRetard />
+            </RequireEmployee>
+          }
         />
-        <Route path="/employee/historique" element={<HistoriqueDemandes />} />
+        <Route
+          path="/employee/historique"
+          element={
+            <RequireEmployee>
+              <HistoriqueDemandes />
+            </RequireEmployee>
+          }
+        />
         <Route
           path="/employee/demande/:id"
           element={

@@ -33,6 +33,9 @@ const mapTitreToTypeCode = (titre) => {
   if (normalized.includes("maladie")) return "MALADIE";
   if (normalized.includes("sans solde")) return "SANS_SOLDE";
   if (normalized.includes("courte")) return "COURTE_DUREE";
+  if (normalized.includes("permission") || normalized.includes("sortie")) {
+    return "COURTE_DUREE";
+  }
   return "PAYE";
 };
 
@@ -71,9 +74,44 @@ const normalizeMockDemande = (row) => ({
   dateSoumission: row?.dateCreation ?? null,
 });
 
+/** Réponse enrichie `/conge/solde` mock ; fallback nombre seul ou Spring minimal. */
+const buildSoldeSummary = (payload) => {
+  if (payload === null || payload === undefined)
+    return { congesPayes: 0, permission: 0, maladie: null, maladieNonDecompte: true, details: [] };
+  if (typeof payload !== "object" || Array.isArray(payload)) {
+    const n = Number(payload);
+    return {
+      congesPayes: Number.isFinite(n) ? Math.max(0, n) : 0,
+      permission: 0,
+      maladie: null,
+      maladieNonDecompte: true,
+      details: [],
+    };
+  }
+  const data = payload;
+  const cp = Number(data.soldeCongesPayes ?? data.solde ?? data.reste ?? 0);
+  const perm = Number(data.soldeCourteDuree ?? data.soldePermission ?? 0);
+  let maladieNum = null;
+  if (data.soldeMaladie != null && data.soldeMaladie !== "") {
+    maladieNum = Number(data.soldeMaladie);
+    if (!Number.isFinite(maladieNum)) maladieNum = null;
+  }
+  return {
+    congesPayes: Number.isFinite(cp) ? Math.max(0, cp) : 0,
+    permission: Number.isFinite(perm) ? Math.max(0, perm) : 0,
+    maladie: maladieNum,
+    maladieNonDecompte:
+      typeof data.maladieNonDecompte === "boolean"
+        ? data.maladieNonDecompte
+        : maladieNum === null || maladieNum === undefined,
+    details: Array.isArray(data.details) ? data.details : [],
+  };
+};
+
 export default function useDemandes() {
   const [demandes, setDemandes] = useState([]);
   const [solde, setSolde] = useState(null);
+  const [soldeSummary, setSoldeSummary] = useState(null);
   const [demandeDetail, setDemandeDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -83,10 +121,14 @@ export default function useDemandes() {
     setError("");
     try {
       const response = await api.get("/conge/solde");
-      const value = response.data?.solde ?? response.data?.reste ?? response.data;
-      setSolde(value);
-      return value;
+      const raw = response.data;
+      const summary = buildSoldeSummary(raw);
+      setSoldeSummary(summary);
+      setSolde(summary.congesPayes);
+      return summary;
     } catch (e) {
+      setSoldeSummary(null);
+      setSolde(null);
       setError("Impossible de récupérer le solde.");
       throw e;
     } finally {
@@ -228,18 +270,28 @@ export default function useDemandes() {
     const mockFirst = isMockSession();
     if (mockFirst) {
       try {
-        const titre = data?.titre ?? data?.typeConge ?? "Congé payé";
+        const isSortie = data?.type === "sortie";
+        const titre = isSortie
+          ? "Permission courte durée"
+          : data?.titre ?? data?.typeConge ?? "Congé payé";
+        const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
+        const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
         const mockPayload = {
           userId: extractMockUserIdFromToken(),
           typeConge: mapTitreToMockTypeCode(titre),
-          dateDebut: data?.dateDebut,
-          dateFin: data?.dateFin,
+          dateDebut,
+          dateFin,
+          heureDebut: data?.heureDebut ?? null,
+          heureFin: data?.heureFin ?? null,
           raison: data?.commentaire ?? data?.motif ?? "",
         };
         const fallback = await api.post("/demande", mockPayload);
         return fallback.data?.demande ?? fallback.data;
       } catch (fallbackError) {
-        setError("Impossible de créer la demande.");
+        setError(
+          fallbackError?.response?.data?.error ||
+            "Impossible de créer la demande.",
+        );
         throw fallbackError;
       } finally {
         setLoading(false);
@@ -247,12 +299,21 @@ export default function useDemandes() {
     }
 
     try {
-      const titre = data?.titre ?? data?.typeConge ?? "Congé payé";
+      const isSortie = data?.type === "sortie";
+      const titre = isSortie
+        ? "Permission courte durée"
+        : data?.titre ?? data?.typeConge ?? "Congé payé";
       const commentaire = data?.commentaire ?? data?.motif ?? "";
+      const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
+      const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
 
       const corePayload = {
-        dateDebut: data?.dateDebut,
-        dateFin: data?.dateFin,
+        titre,
+        dateDebut,
+        dateFin,
+        commentaire,
+        heureDebut: data?.heureDebut ?? null,
+        heureFin: data?.heureFin ?? null,
         typeConge: mapTitreToTypeCode(titre),
         motif: commentaire,
       };
@@ -263,23 +324,33 @@ export default function useDemandes() {
     } catch (e) {
       // Compatibility fallback when mock backend is running.
       if (e?.response?.status === 404) {
-        const titre = data?.titre ?? data?.typeConge ?? "Congé payé";
+        const isSortie = data?.type === "sortie";
+        const titre = isSortie
+          ? "Permission courte durée"
+          : data?.titre ?? data?.typeConge ?? "Congé payé";
+        const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
+        const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
         const mockPayload = {
           userId: extractMockUserIdFromToken(),
           typeConge: mapTitreToMockTypeCode(titre),
-          dateDebut: data?.dateDebut,
-          dateFin: data?.dateFin,
+          dateDebut,
+          dateFin,
+          heureDebut: data?.heureDebut ?? null,
+          heureFin: data?.heureFin ?? null,
           raison: data?.commentaire ?? data?.motif ?? "",
         };
         try {
           const fallback = await api.post("/demande", mockPayload);
           return fallback.data?.demande ?? fallback.data;
         } catch (fallbackError) {
-          setError("Impossible de créer la demande.");
+          setError(
+            fallbackError?.response?.data?.error ||
+              "Impossible de créer la demande.",
+          );
           throw fallbackError;
         }
       }
-      setError("Impossible de créer la demande.");
+      setError(e?.response?.data?.error || "Impossible de créer la demande.");
       throw e;
     } finally {
       setLoading(false);
@@ -327,6 +398,7 @@ export default function useDemandes() {
     () => ({
       demandes,
       solde,
+      soldeSummary,
       demandeDetail,
       loading,
       error,
@@ -340,6 +412,7 @@ export default function useDemandes() {
     [
       demandes,
       solde,
+      soldeSummary,
       demandeDetail,
       loading,
       error,

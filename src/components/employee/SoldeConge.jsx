@@ -1,6 +1,51 @@
 import React from "react";
 
-export default function SoldeConge({ solde }) {
+/**
+ * Affiche une synthèse des soldes (congés payés, permission, maladie) si disponible ;
+ * sinon le nombre unique `solde` (compat anciens backends).
+ */
+export default function SoldeConge({ soldeSummary, solde }) {
+  if (soldeSummary) {
+    const { congesPayes, permission, maladie, maladieNonDecompte } = soldeSummary;
+    const bloc = (titre, valeurOuTexte, sousTitre, borderClassName = "border-blue-600") => (
+      <div
+        key={titre}
+        className={`bg-white rounded-2xl shadow-md border-l-4 ${borderClassName} p-5 flex flex-col gap-1 fade-in-up`}
+      >
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+          {titre}
+        </div>
+        <div className="text-2xl font-bold text-slate-900">
+          {valeurOuTexte}
+          {typeof valeurOuTexte === "number" && (
+            <span className="text-base text-slate-600 font-semibold ml-1">jours</span>
+          )}
+        </div>
+        {sousTitre && <p className="text-xs text-slate-600 mt-0.5">{sousTitre}</p>}
+      </div>
+    );
+
+    return (
+      <div className="grid gap-4 sm:grid-cols-3">
+        {bloc("Congés payés", Number(congesPayes) || 0, null)}
+        {bloc(
+          "Permissions (courte durée)",
+          Number(permission) || 0,
+          "Equivalent RTT dans l’outil",
+          "border-violet-600",
+        )}
+        {bloc(
+          "Congé maladie",
+          maladieNonDecompte ? "Non décompté" : (maladie ?? 0),
+          maladieNonDecompte
+            ? "Géré hors quota (justification / règle interne)."
+            : null,
+          "border-teal-600",
+        )}
+      </div>
+    );
+  }
+
   const safeSolde =
     typeof solde === "number"
       ? solde

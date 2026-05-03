@@ -6,7 +6,7 @@ import CarteAction from "../../components/employee/CarteAction";
 import Spinner from "../../components/commun/Spinner";
 
 export default function DashboardEmploye() {
-  const { solde, loading, error, fetchSolde } = useDemandes();
+  const { solde, soldeSummary, loading, error, fetchSolde } = useDemandes();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,7 +21,11 @@ export default function DashboardEmploye() {
         </h1>
 
         <div className="mt-8">
-          {loading && !solde ? <Spinner /> : <SoldeConge solde={solde} />}
+          {loading && soldeSummary == null ? (
+            <Spinner />
+          ) : (
+            <SoldeConge soldeSummary={soldeSummary} solde={solde} />
+          )}
           {error && (
             <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
               <div className="flex items-start gap-3">
@@ -61,9 +65,53 @@ export default function DashboardEmploye() {
               onClick={() => navigate("/employee/retard/new")}
             />
           </div>
+
+        </div>
+
+        <div className="mt-10 overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr className="text-left">
+                <th className="p-4 font-semibold text-slate-900">Suivi des demandes</th>
+                <th className="p-4 font-semibold text-slate-900">Description</th>
+                <th className="p-4 font-semibold text-slate-900">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="p-4 text-slate-800 font-medium">Demandes en cours</td>
+                <td className="p-4 text-slate-600">
+                  Consultez vos demandes en attente de validation.
+                </td>
+                <td className="p-4">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/employee/historique?statut=attente")}
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-all"
+                  >
+                    Ouvrir
+                  </button>
+                </td>
+              </tr>
+              <tr className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="p-4 text-slate-800 font-medium">Historique des demandes</td>
+                <td className="p-4 text-slate-600">
+                  Voir toutes vos demandes (acceptées, refusées, annulées).
+                </td>
+                <td className="p-4">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/employee/historique?statut=tous")}
+                    className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-900 transition-all"
+                  >
+                    Ouvrir
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      );
     </div>
   );
 }

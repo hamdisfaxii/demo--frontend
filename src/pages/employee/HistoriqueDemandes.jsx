@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import FiltresDemandes from "../../components/employee/FiltresDemandes";
 import StatutBadge from "../../components/employee/StatutBadge";
@@ -25,8 +25,15 @@ const pickId = (demande) => demande?.id ?? demande?._id ?? demande?.ID;
 
 export default function HistoriqueDemandes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { demandes, loading, error, fetchDemandes, annulerDemande } =
     useDemandes();
+
+  const statusFromQuery = useMemo(() => {
+    const q = new URLSearchParams(location.search).get("statut");
+    const allowed = new Set(["tous", "attente", "validee", "refusée", "annulée"]);
+    return allowed.has(q) ? q : "tous";
+  }, [location.search]);
 
   const years = useMemo(() => {
     const current = new Date().getFullYear();
@@ -37,7 +44,7 @@ export default function HistoriqueDemandes() {
 
   const [filters, setFilters] = useState({
     annee: String(new Date().getFullYear()),
-    statut: "tous",
+    statut: statusFromQuery,
   });
 
   const [page, setPage] = useState(1);
@@ -67,6 +74,14 @@ export default function HistoriqueDemandes() {
       statut: filters.statut,
     }).catch(() => {});
   }, [filters, fetchDemandes]);
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      statut: statusFromQuery,
+    }));
+    setPage(1);
+  }, [statusFromQuery]);
 
   const handleCancel = (demande) => {
     const id = pickId(demande);

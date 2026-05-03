@@ -6,12 +6,9 @@ import {
   getPublicHolidays,
 } from "../../utils/rhApi";
 import Spinner from "../../components/commun/Spinner";
+import { HR_COUNTRY_LIST } from "../../utils/country";
 
-const COUNTRIES = [
-  { code: "TN", label: "Tunisie", flag: "🇹🇳" },
-  { code: "FR", label: "France", flag: "🇫🇷" },
-  { code: "MA", label: "Maroc", flag: "🇲🇦" },
-];
+const COUNTRIES = HR_COUNTRY_LIST;
 
 export default function JoursFeries() {
   const [loading, setLoading] = useState(false);

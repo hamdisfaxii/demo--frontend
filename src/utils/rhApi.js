@@ -349,3 +349,18 @@ export async function deletePublicHoliday(id) {
   const { data } = await api.delete(`/hr-config/public-holidays/${id}`);
   return data;
 }
+
+export async function getWorkSchedules(countryCode, scheduleType = "NORMAL") {
+  const { data } = await api.get("/hr-config/work-schedules", {
+    params: {
+      country: String(countryCode || "TN").toUpperCase(),
+      type: scheduleType,
+    },
+  });
+  return data ?? {};
+}
+
+export async function saveWorkSchedules(payload) {
+  const { data } = await api.put("/hr-config/work-schedules", payload);
+  return data;
+}

@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useContext, useEffect } from "react";
 import { loginAPI, getCurrentUserAPI } from "../utils/auth";
+import { normalizeCountryIsoForHr } from "../utils/country";
 
 // ============================================
 // 1. Création du contexte (le panneau d'affichage)
@@ -50,17 +51,7 @@ const getHomePathForRole = (rawRole) => {
   return "/login";
 };
 
-const normalizeCountry = (rawCountry) => {
-  const c = String(rawCountry ?? "")
-    .trim()
-    .toUpperCase();
-  if (!c) return "";
-  if (c === "TN" || c === "FR" || c === "MA") return c;
-  if (c.includes("TUNIS")) return "TN";
-  if (c.includes("FRANCE")) return "FR";
-  if (c.includes("MAROC") || c.includes("MOROCCO")) return "MA";
-  return c;
-};
+const normalizeCountry = (rawCountry) => normalizeCountryIsoForHr(rawCountry);
 
 // ============================================
 // 2. Raccourci useAuth pour utiliser le contexte facilement

@@ -4,7 +4,14 @@ import useDemandes from "../../hooks/useDemandes";
 
 export default function NouvelleSortieCourteDuree() {
   const navigate = useNavigate();
-  const { loading, error, creerDemande } = useDemandes();
+  const {
+    loading,
+    error,
+    fetchSolde,
+    solde,
+    soldeSummary,
+    creerDemande,
+  } = useDemandes();
 
   const [dateSortie, setDateSortie] = useState("");
   const [heureDebut, setHeureDebut] = useState("");
@@ -18,6 +25,10 @@ export default function NouvelleSortieCourteDuree() {
     const today = new Date().toISOString().split("T")[0];
     setDateSortie(today);
   }, []);
+
+  useEffect(() => {
+    fetchSolde().catch(() => {});
+  }, [fetchSolde]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,6 +122,19 @@ export default function NouvelleSortieCourteDuree() {
         <p className="mt-3 text-slate-600">
           Soumettez votre demande de sortie selon vos horaires.
         </p>
+
+        <div className="mt-6 rounded-xl border border-violet-200 bg-violet-50 px-5 py-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-violet-900">
+            Solde permissions (RTT / courte durée)
+          </div>
+          <div className="mt-1 text-xl font-bold text-violet-950">
+            {soldeSummary
+              ? `${soldeSummary.permission} jour(s)`
+              : typeof solde === "number"
+                ? `${solde} jour(s)`
+                : "—"}
+          </div>
+        </div>
 
         {(loading || submitting) && (
           <div className="mt-4 text-sm font-medium text-slate-600">

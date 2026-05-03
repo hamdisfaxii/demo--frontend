@@ -159,7 +159,7 @@ export default function DecisionModule() {
     try {
       await api.post(`/hr/requests/${modal.requestId}/decision`, {
         action: modal.action,
-        comment: modal.comment || null,
+        comment: modal.comment || "",
       });
     } catch (primaryError) {
       if (primaryError?.response?.status === 404) {

@@ -15,12 +15,20 @@ export default function StatutBadge({ statut }) {
 
   let label = String(statut ?? "");
   // Normalisation de label si besoin.
-  if (raw === "en_attente" || raw === "attente") label = "attente";
-  if (raw === "validee" || raw === "accordee") label = "accordée";
-  if (raw === "refusee") label = "refusée";
-  if (raw === "annulee") label = "annulée";
+  if (raw === "en_attente" || raw === "attente" || raw === "pending")
+    label = "En attente";
+  if (
+    raw === "validee" ||
+    raw === "accordee" ||
+    raw === "approved" ||
+    raw === "accepte"
+  )
+    label = "Approuvé";
+  if (raw === "refusee" || raw === "refuse" || raw === "rejected")
+    label = "Rejeté";
+  if (raw === "annulee" || raw === "annule") label = "Annulée";
 
-  if (raw === "en_attente" || raw === "attente") {
+  if (raw === "en_attente" || raw === "attente" || raw === "pending") {
     return (
       <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800">
         ⏳ {label}
@@ -28,7 +36,12 @@ export default function StatutBadge({ statut }) {
     );
   }
 
-  if (raw === "validee" || raw === "accordee") {
+  if (
+    raw === "validee" ||
+    raw === "accordee" ||
+    raw === "approved" ||
+    raw === "accepte"
+  ) {
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">
         ✓ {label}
@@ -36,7 +49,7 @@ export default function StatutBadge({ statut }) {
     );
   }
 
-  if (raw === "refusee" || raw === "refuse") {
+  if (raw === "refusee" || raw === "refuse" || raw === "rejected") {
     return (
       <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-800">
         ✕ {label}
