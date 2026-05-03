@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   applyPublicHoliday,
   createPublicHoliday,
   deletePublicHoliday,
   getPublicHolidays,
+  importPublicHolidaysAllCountries,
 } from "../../utils/rhApi";
 import Spinner from "../../components/commun/Spinner";
 import { HR_COUNTRY_LIST } from "../../utils/country";
@@ -26,7 +27,11 @@ export default function JoursFeries() {
     [activeCountry],
   );
 
-  const loadHolidays = async (countryCode = activeCountry, selectedYear = year) => {
+  /** Évite de relancer l’import des 3 pays à chaque changement d’onglet (seulement si l’année change). */
+  const officialImportYearRef = useRef(null);
+
+  /** Recharge la liste sans refaire l’import officiel (après ajout / suppression / toggle). */
+  const refreshList = async (countryCode = activeCountry, selectedYear = year) => {
     setLoading(true);
     setError("");
     try {
@@ -39,8 +44,36 @@ export default function JoursFeries() {
     }
   };
 
+  /** Synchronise les fériés officiels pour TN/FR/MA quand l’année change (ou au 1er affichage), puis charge l’onglet courant. */
   useEffect(() => {
-    loadHolidays(activeCountry, year);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        if (officialImportYearRef.current !== year) {
+          try {
+            await importPublicHolidaysAllCountries(year);
+          } catch {
+            /* import optionnel : la liste peut encore provenir du seed ou du GET */
+          }
+          officialImportYearRef.current = year;
+        }
+        if (cancelled) return;
+        const rows = await getPublicHolidays(activeCountry, year);
+        if (!cancelled) setHolidays(rows);
+      } catch {
+        if (!cancelled) {
+          setHolidays([]);
+          setError("Impossible de charger les jours fériés.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [activeCountry, year]);
 
   const handleCreateHoliday = async () => {
@@ -59,7 +92,7 @@ export default function JoursFeries() {
       setShowAddForm(false);
       setNewHolidayLabel("");
       setNewHolidayDate("");
-      await loadHolidays(activeCountry, year);
+      await refreshList(activeCountry, year);
     } catch {
       setError("Ajout du jour férié impossible.");
     } finally {
@@ -72,7 +105,7 @@ export default function JoursFeries() {
     setError("");
     try {
       await applyPublicHoliday(row.id, !row.active);
-      await loadHolidays(activeCountry, year);
+      await refreshList(activeCountry, year);
     } catch {
       setError("Impossible de changer l'état du jour férié.");
     } finally {
@@ -85,7 +118,7 @@ export default function JoursFeries() {
     setError("");
     try {
       await deletePublicHoliday(row.id);
-      await loadHolidays(activeCountry, year);
+      await refreshList(activeCountry, year);
     } catch {
       setError("Impossible de supprimer ce jour férié.");
     } finally {
@@ -99,7 +132,8 @@ export default function JoursFeries() {
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 fade-in-up">
           <h1 className="text-4xl font-bold text-slate-900">Jours fériés</h1>
           <p className="mt-3 text-sm text-slate-600">
-            Gestion des jours fériés par pays et par année.
+            Les jours fériés officiels (TN, FR, MA) sont synchronisés automatiquement pour l’année choisie (source Nager,
+            repli local hors ligne).
           </p>
 
           <div className="mt-6">

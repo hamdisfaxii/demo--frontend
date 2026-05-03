@@ -4,10 +4,14 @@ import useDemandes from "../../hooks/useDemandes";
 import SoldeConge from "../../components/employee/SoldeConge";
 import CarteAction from "../../components/employee/CarteAction";
 import Spinner from "../../components/commun/Spinner";
+import { useAuth } from "../../context/authcontext";
+import { metaForCountry } from "../../utils/country";
 
 export default function DashboardEmploye() {
+  const { user } = useAuth();
   const { solde, soldeSummary, loading, error, fetchSolde } = useDemandes();
   const navigate = useNavigate();
+  const paysMeta = metaForCountry(user?.country);
 
   useEffect(() => {
     fetchSolde().catch(() => {});
@@ -19,6 +23,27 @@ export default function DashboardEmploye() {
         <h1 className="text-4xl font-bold text-slate-900 animate-fadeIn">
           Bienvenue dans votre espace privé
         </h1>
+        {user && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm"
+              title="Pays RH (DOM français regroupés en France pour les quotas)"
+            >
+              <span className="text-lg" aria-hidden>
+                {paysMeta.flag}
+              </span>
+              <span className="font-semibold text-slate-900">{paysMeta.label}</span>
+              <span className="text-xs text-slate-500 uppercase tracking-wide">
+                ({user.country || "—"})
+              </span>
+            </span>
+            {user.departement ? (
+              <span className="text-slate-500">
+                Service : <strong className="text-slate-800">{user.departement}</strong>
+              </span>
+            ) : null}
+          </div>
+        )}
 
         <div className="mt-8">
           {loading && soldeSummary == null ? (
@@ -37,6 +62,16 @@ export default function DashboardEmploye() {
         </div>
 
         <div className="mt-10 flex flex-wrap justify-center gap-6">
+          <div className="w-full sm:w-80">
+            <CarteAction
+              titre="Mon calendrier"
+              description="Vue mois : congés validés ou en attente et jours fériés selon votre pays."
+              boutonTexte="Ouvrir le calendrier"
+              icone={<div className="text-2xl">📆</div>}
+              onClick={() => navigate("/employee/calendar")}
+            />
+          </div>
+
           <div className="w-full sm:w-80">
             <CarteAction
               titre="Je demande un congé"

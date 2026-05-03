@@ -6,14 +6,32 @@ import React from "react";
  */
 export default function SoldeConge({ soldeSummary, solde }) {
   if (soldeSummary) {
-    const { congesPayes, permission, maladie, maladieNonDecompte } = soldeSummary;
-    const bloc = (titre, valeurOuTexte, sousTitre, borderClassName = "border-blue-600") => (
+    const {
+      congesPayes,
+      permission,
+      maladie,
+      maladieNonDecompte,
+      maladieMessage,
+      hintCongesPayes,
+      soldeTotalTousTypes,
+    } = soldeSummary;
+
+    const maladieSousTexte =
+      maladieNonDecompte &&
+      typeof maladieMessage === "string" &&
+      maladieMessage.trim()
+        ? maladieMessage
+        : maladieNonDecompte
+          ? "Géré hors quota (justification ou règle interne)."
+          : null;
+
+    const bloc = (title, valeurOuTexte, sousTitre, borderClassName = "border-blue-600") => (
       <div
-        key={titre}
+        key={title}
         className={`bg-white rounded-2xl shadow-md border-l-4 ${borderClassName} p-5 flex flex-col gap-1 fade-in-up`}
       >
         <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-          {titre}
+          {title}
         </div>
         <div className="text-2xl font-bold text-slate-900">
           {valeurOuTexte}
@@ -21,27 +39,43 @@ export default function SoldeConge({ soldeSummary, solde }) {
             <span className="text-base text-slate-600 font-semibold ml-1">jours</span>
           )}
         </div>
-        {sousTitre && <p className="text-xs text-slate-600 mt-0.5">{sousTitre}</p>}
+        {sousTitre && (
+          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{sousTitre}</p>
+        )}
       </div>
     );
 
     return (
-      <div className="grid gap-4 sm:grid-cols-3">
-        {bloc("Congés payés", Number(congesPayes) || 0, null)}
-        {bloc(
-          "Permissions (courte durée)",
-          Number(permission) || 0,
-          "Equivalent RTT dans l’outil",
-          "border-violet-600",
-        )}
-        {bloc(
-          "Congé maladie",
-          maladieNonDecompte ? "Non décompté" : (maladie ?? 0),
-          maladieNonDecompte
-            ? "Géré hors quota (justification / règle interne)."
-            : null,
-          "border-teal-600",
-        )}
+      <div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {bloc("Congés payés", Number(congesPayes) || 0, null)}
+          {bloc(
+            "Permissions (courte durée) — RTT",
+            Number(permission) || 0,
+            "Dont « Permission / courte durée » au Maroc (même bloc technique RTT au mock).",
+            "border-violet-600",
+          )}
+          {bloc(
+            "Congé maladie",
+            maladieNonDecompte ? "Non décompté" : (maladie ?? 0),
+            maladieSousTexte,
+            "border-teal-600",
+          )}
+        </div>
+
+        <div className="mt-5 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-xs text-slate-600 leading-relaxed">
+          <p>
+            {hintCongesPayes ||
+              "Le solde principal affiché pour les demandes « congé payé » = congés payés uniquement. Les permissions (RTT), parental et maladie suivent d’autres compteurs ou règles."}
+          </p>
+            {typeof soldeTotalTousTypes === "number" && Number.isFinite(soldeTotalTousTypes) ? (
+              <p className="mt-2 text-slate-500">
+                Indicateur agrégé (optionnel / debug) tous types avec quota positif environ{" "}
+                <strong>{soldeTotalTousTypes}</strong> jours au total — à ne pas confondre avec le
+                bloc « Congés payés ».
+              </p>
+            ) : null}
+        </div>
       </div>
     );
   }

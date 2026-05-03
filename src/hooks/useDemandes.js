@@ -30,8 +30,10 @@ const mapTitreToTypeCode = (titre) => {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
+  if (normalized.includes("enfant")) return "ENFANT_MALADE";
   if (normalized.includes("maladie")) return "MALADIE";
   if (normalized.includes("sans solde")) return "SANS_SOLDE";
+  if (normalized.includes("parent")) return "PARENTAL";
   if (normalized.includes("courte")) return "COURTE_DUREE";
   if (normalized.includes("permission") || normalized.includes("sortie")) {
     return "COURTE_DUREE";
@@ -44,6 +46,8 @@ const mapTitreToMockTypeCode = (titre) => {
   if (typeCode === "MALADIE") return "CONGE_MALADIE";
   if (typeCode === "SANS_SOLDE") return "CONGE_SANS_SOLDE";
   if (typeCode === "COURTE_DUREE") return "RTT";
+  if (typeCode === "PARENTAL") return "PARENTAL";
+  if (typeCode === "ENFANT_MALADE") return "ENFANT_MALADE";
   return "CONGES_PAYES";
 };
 
@@ -75,9 +79,19 @@ const normalizeMockDemande = (row) => ({
 });
 
 /** Réponse enrichie `/conge/solde` mock ; fallback nombre seul ou Spring minimal. */
-const buildSoldeSummary = (payload) => {
+export function buildSoldeSummary(payload) {
   if (payload === null || payload === undefined)
-    return { congesPayes: 0, permission: 0, maladie: null, maladieNonDecompte: true, details: [] };
+    return {
+      congesPayes: 0,
+      permission: 0,
+      maladie: null,
+      maladieNonDecompte: true,
+      maladieMessage:
+        "Congé maladie défini hors quota : il ne diminue ni vos congés payés ni vos permissions courte durée.",
+      hintCongesPayes: "",
+      details: [],
+      soldeTotalTousTypes: null,
+    };
   if (typeof payload !== "object" || Array.isArray(payload)) {
     const n = Number(payload);
     return {
@@ -85,7 +99,10 @@ const buildSoldeSummary = (payload) => {
       permission: 0,
       maladie: null,
       maladieNonDecompte: true,
+      maladieMessage: "",
+      hintCongesPayes: "",
       details: [],
+      soldeTotalTousTypes: null,
     };
   }
   const data = payload;
@@ -96,17 +113,37 @@ const buildSoldeSummary = (payload) => {
     maladieNum = Number(data.soldeMaladie);
     if (!Number.isFinite(maladieNum)) maladieNum = null;
   }
+  const maladieNonDecompte =
+    typeof data.maladieNonDecompte === "boolean"
+      ? data.maladieNonDecompte
+      : maladieNum === null || maladieNum === undefined;
+  const msgApi =
+    typeof data.messageMaladie === "string" ? data.messageMaladie.trim() : "";
+  const maladieMessage =
+    msgApi ||
+    (maladieNonDecompte
+      ? "Congé maladie défini hors quota : il ne diminue ni vos congés payés ni vos permissions courte durée (RTT)."
+      : "");
+  const hintCongesPayes =
+    typeof data.hintCongesPayes === "string"
+      ? data.hintCongesPayes
+      : "";
+
+  let soldeTotalTousTypes =
+    data.soldeTotalTousTypes != null ? Number(data.soldeTotalTousTypes) : null;
+  if (!Number.isFinite(soldeTotalTousTypes)) soldeTotalTousTypes = null;
+
   return {
     congesPayes: Number.isFinite(cp) ? Math.max(0, cp) : 0,
     permission: Number.isFinite(perm) ? Math.max(0, perm) : 0,
     maladie: maladieNum,
-    maladieNonDecompte:
-      typeof data.maladieNonDecompte === "boolean"
-        ? data.maladieNonDecompte
-        : maladieNum === null || maladieNum === undefined,
+    maladieNonDecompte,
+    maladieMessage,
+    hintCongesPayes,
     details: Array.isArray(data.details) ? data.details : [],
+    soldeTotalTousTypes,
   };
-};
+}
 
 export default function useDemandes() {
   const [demandes, setDemandes] = useState([]);

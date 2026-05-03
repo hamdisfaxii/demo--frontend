@@ -134,6 +134,11 @@ export default function NouvelleSortieCourteDuree() {
                 ? `${solde} jour(s)`
                 : "—"}
           </div>
+          <p className="mt-2 text-xs text-violet-900/95 leading-relaxed">
+            Détail métier maquette : au Maroc le type équivalent peut s’afficher sous le libellé «
+            Permission / courte durée » — c’est le même compteur RTT/mock que TN et FR dans cet outil.
+            Les heures sont validées contre votre planning configuré par le RH pays.
+          </p>
         </div>
 
         {(loading || submitting) && (

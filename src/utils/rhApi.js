@@ -239,24 +239,17 @@ export async function decideHrRequest(id, action, comment) {
 }
 
 export async function getCalendarEvents(filters = {}) {
+  const params = {};
+  if (filters.employeeId) params.employeeId = filters.employeeId;
+  if (filters.department) params.department = filters.department;
+  if (filters.country) params.country = filters.country;
+  if (filters.startDate) params.startDate = filters.startDate;
+  if (filters.endDate) params.endDate = filters.endDate;
   try {
-    const params = {};
-    if (filters.employeeId) params.employeeId = filters.employeeId;
-    if (filters.department) params.department = filters.department;
-    if (filters.country) params.country = filters.country;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
     const { data } = await api.get("/calendar/events", { params });
     return Array.isArray(data) ? data : [];
-  } catch (e) {
-    const params = {};
-    if (filters.employeeId) params.employeeId = filters.employeeId;
-    if (filters.department) params.department = filters.department;
-    if (filters.country) params.country = filters.country;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
-    const { data } = await api.get("/calendar/events", { params });
-    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
   }
 }
 
@@ -329,6 +322,14 @@ export async function importPublicHolidays(countryCode, year) {
       country: String(countryCode || "TN").toUpperCase(),
       year: Number(year),
     },
+  });
+  return data;
+}
+
+/** Synchronise les jours fériés officiels (Nager + repli) pour tous les pays RH (TN, FR, MA). */
+export async function importPublicHolidaysAllCountries(year) {
+  const { data } = await api.post("/hr-config/public-holidays/import-all", null, {
+    params: { year: Number(year) },
   });
   return data;
 }

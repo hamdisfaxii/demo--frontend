@@ -107,8 +107,13 @@ export const AuthProvider = ({ children }) => {
           const data = response.data ?? {};
           const role = data.role ?? data.user?.role;
           const email = data.email ?? data.user?.email;
+          const prenomNom = [data.prenom, data.nom].filter(Boolean).join(" ").trim();
           const name =
-            data.name ?? data.fullName ?? data.user?.fullName ?? data.user?.name;
+            data.name ??
+            data.fullName ??
+            (prenomNom ? prenomNom : null) ??
+            data.user?.fullName ??
+            data.user?.name;
           const userData = {
             id: data.id ?? data.user?.id ?? restoredUser?.id,
             email: email || restoredUser?.email,
@@ -116,6 +121,11 @@ export const AuthProvider = ({ children }) => {
             role: normalizeRole(role),
             rawRole: role,
             country: normalizeCountry(data.pays ?? data.country ?? data.user?.pays ?? data.user?.country),
+            departement:
+              data.departement ??
+              data.user?.departement ??
+              restoredUser?.departement ??
+              "",
           };
           setUser(userData);
         } catch {
@@ -152,17 +162,28 @@ export const AuthProvider = ({ children }) => {
       const data = response.data ?? {};
       const token = data.token;
       const role = data.role ?? data.user?.role;
-      const name = data.name ?? data.user?.fullName ?? data.user?.name;
-      const emailFromApi = data.email ?? data.user?.email;
+      const u = data.user ?? {};
+      const pn = [data.prenom, data.nom].filter(Boolean).join(" ").trim();
+      const name =
+        u.fullName ??
+        data.user?.fullName ??
+        data.name ??
+        data.fullName ??
+        (pn ? pn : null) ??
+        u.name;
+      const emailFromApi = u.email ?? data.email ?? email;
 
       // Je crée un objet utilisateur avec les infos
       const userData = {
-        id: data.id ?? data.user?.id,
+        id: u.id ?? data.id ?? data.user?.id,
         email: emailFromApi || email,
         name: name || emailFromApi || email, // Si pas de nom, j'utilise l'email
         role: normalizeRole(role),
         rawRole: role,
-        country: normalizeCountry(data.pays ?? data.country ?? data.user?.pays ?? data.user?.country),
+        country: normalizeCountry(
+          u.pays ?? data.pays ?? data.country ?? data.user?.pays ?? data.user?.country,
+        ),
+        departement: u.departement ?? data.departement ?? data.user?.departement ?? "",
       };
 
       // Je stocke dans localStorage (pour que ça reste après fermeture)

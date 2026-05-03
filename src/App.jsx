@@ -10,6 +10,7 @@ import NouvelleDemandeRetard from "./pages/employee/NouvelleDemandeRetard";
 import NouvelleSortieCourteDuree from "./pages/employee/NouvelleSortieCourteDuree";
 import HistoriqueDemandes from "./pages/employee/HistoriqueDemandes";
 import DetailDemande from "./pages/employee/DetailDemande";
+import EmployeeCalendarPage from "./pages/employee/EmployeeCalendarPage";
 import JoursFeries from "./pages/rh/JoursFeries";
 import DecisionModule from "./pages/rh/DecisionModule";
 import HrDashboard from "./pages/rh/HrDashboard";
@@ -154,6 +155,14 @@ function AppRoutes() {
           element={
             <RequireEmployee>
               <HistoriqueDemandes />
+            </RequireEmployee>
+          }
+        />
+        <Route
+          path="/employee/calendar"
+          element={
+            <RequireEmployee>
+              <EmployeeCalendarPage />
             </RequireEmployee>
           }
         />

@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import { calculerJoursOuvres } from "../../utils/calculJours";
+import { useAuth } from "../../context/authcontext";
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { solde, soldeSummary, loading, error, fetchSolde, creerDemande } =
     useDemandes();
 
@@ -32,8 +34,37 @@ export default function NouvelleDemande() {
     const end = new Date(dateFin);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
     if (end <= start) return 0;
-    return calculerJoursOuvres(dateDebut, dateFin);
-  }, [dateDebut, dateFin]);
+    return calculerJoursOuvres(dateDebut, dateFin, user?.country || "");
+  }, [dateDebut, dateFin, user?.country]);
+
+  const titreInfo = useMemo(() => {
+    const t = String(titre || "").toLowerCase();
+    if (t.includes("maladie") && !t.includes("enfant")) {
+      return {
+        variant: "maladie",
+        text: "Ce type n’est pas bloqué par le solde de congés payés ci-dessus : il suit la règle maladie (hors quota dans la config actuelle du mock).",
+      };
+    }
+    if (t.includes("sans solde")) {
+      return {
+        variant: "sans",
+        text: "Congé sans solde : aucune vérification sur vos CP ni sur les permissions courte durée.",
+      };
+    }
+    if (t.includes("parent") || t.includes("enfant")) {
+      return {
+        variant: "famille",
+        text: "Congé famille : le ledger mock utilise PARENTAL ou ENFANT_MALADE (quota différent des CP — voir écran tableau de bord).",
+      };
+    }
+    if (t.includes("payé")) {
+      return {
+        variant: "paye",
+        text: "Seul ce type vérifie le bandeau « congés payés » avant envoi.",
+      };
+    }
+    return null;
+  }, [titre]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,8 +157,15 @@ export default function NouvelleDemande() {
                 ? `${soldeCongesPayes} jours`
                 : "—"}
               <span className="block text-sm font-semibold text-blue-800/90 mt-2">
-                (Congés payés uniquement — maladie / sans solde : pas de même quota)
+                (Congés payés uniquement — maladie / sans solde : pas le même quota)
               </span>
+              {soldeSummary && typeof soldeSummary.permission === "number" ? (
+                <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
+                  Permissions courte durée (RTT équivalent dans l’outil) : environ{" "}
+                  <strong>{soldeSummary.permission} jour(s)</strong> — à utiliser depuis « Sortie
+                  courte durée » (avec horaires imposées).
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -163,8 +201,20 @@ export default function NouvelleDemande() {
               >
                 <option value="Congé payé">Congé payé</option>
                 <option value="Congé sans solde">Congé sans solde</option>
-                <option value="Congé maladie">Congé maladie</option>
+                <option value="Congé parental">Congé parental</option>
+                <option value="Congé enfant malade">Congé enfant malade</option>
               </select>
+              {titreInfo && (
+                <div
+                  className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                    titreInfo.variant === "paye"
+                      ? "border-blue-200 bg-blue-50 text-blue-900"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  }`}
+                >
+                  {titreInfo.text}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
@@ -205,7 +255,9 @@ export default function NouvelleDemande() {
                 />
               </div>
               <p className="mt-2 text-xs text-slate-500">
-                Calculé automatiquement en excluant les samedis et dimanches.
+                Calcul automatique selon vos jours ouvrés (TN / FR / MA : week-ends exclus et jours fériés
+                nationaux selon votre pays RH ; sinon week-ends seulement si le pays n’est pas encore
+                défini).
               </p>
             </div>
 

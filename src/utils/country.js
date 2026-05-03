@@ -31,6 +31,23 @@ export const HR_COUNTRY_LIST = SUPPORTED_HR_COUNTRIES.map(
   (c) => COUNTRY_META[c],
 );
 
+/** Barres événements calendrier RH (pastilles pleines comme maquette global RH). */
+export const COUNTRY_CALENDAR_EVENT_CLASSES = {
+  TN: "border-transparent bg-green-500 text-white shadow-sm",
+  FR: "border-transparent bg-blue-500 text-white shadow-sm",
+  MA: "border-transparent bg-amber-500 text-white shadow-sm",
+};
+
+export function calendarEventClassesForCountry(isoRaw) {
+  if (isoRaw == null || String(isoRaw).trim() === "") {
+    return "border-transparent bg-violet-500 text-white shadow-sm";
+  }
+  const code = normalizeCountryIsoForHr(isoRaw) || "TN";
+  return (
+    COUNTRY_CALENDAR_EVENT_CLASSES[code] ?? "border-transparent bg-slate-500 text-white shadow-sm"
+  );
+}
+
 /**
  * Réunion / Guadeloupe / … → France pour régles quotas & libellés.
  */
