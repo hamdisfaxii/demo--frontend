@@ -33,7 +33,7 @@ const approveWithMockCandidates = async (id, comment) => {
   throw lastError;
 };
 
-const normalizeStatus = (raw) => {
+export function normalizeStatus(raw) {
   const s = String(raw ?? "")
     .trim()
     .toUpperCase()
@@ -47,7 +47,7 @@ const normalizeStatus = (raw) => {
     return "REJECTED";
   }
   return s || "UNKNOWN";
-};
+}
 
 const mapMockToRequest = (row) => ({
   id: row.id,
@@ -144,46 +144,43 @@ export async function getHrStats() {
 }
 
 export async function getHrRequests(filters = {}) {
-  const mockFirst = isMockSession();
+  const params = {};
+  if (filters.status && filters.status !== "ALL") params.status = filters.status;
+  if (filters.employee) params.employee = filters.employee;
+  if (filters.country) params.country = filters.country;
+  if (filters.department) params.department = filters.department;
+  if (filters.startDate) params.startDate = filters.startDate;
+  if (filters.endDate) params.endDate = filters.endDate;
 
-  if (mockFirst) {
+  let lastError = null;
+  for (const path of ["/rh/requests", "/hr/requests"]) {
     try {
-      const { data } = await api.get("/rh/demandes-en-attente");
-      const rows = Array.isArray(data?.demandes) ? data.demandes.map(mapMockToRequest) : [];
-      return filterRows(rows, filters);
+      const { data } = await api.get(path, { params });
+      const list = data?.requests ?? data ?? [];
+      return Array.isArray(list) ? list.map(mapMockToRequest) : [];
     } catch (e) {
+      lastError = e;
       if (e?.response?.status !== 404) throw e;
     }
   }
 
+  /* Anciens backends : uniquement file d’attente — filtre statut autre qu’attente ne peut pas être honoré. */
   try {
-    const params = {};
-    if (filters.status && filters.status !== "ALL") params.status = filters.status;
-    if (filters.employee) params.employee = filters.employee;
-    if (filters.country) params.country = filters.country;
-    if (filters.department) params.department = filters.department;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
-    const { data } = await api.get("/rh/requests", { params });
-    const list = data?.requests ?? data ?? [];
-    return Array.isArray(list) ? list.map(mapMockToRequest) : [];
-  } catch (e) {
-    if (e?.response?.status !== 404) throw e;
-  }
-
-  try {
-    const params = {};
-    if (filters.employee) params.employee = filters.employee;
-    if (filters.country) params.country = filters.country;
-    if (filters.department) params.department = filters.department;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
-    const { data } = await api.get("/hr/requests/pending", { params });
-    return Array.isArray(data) ? data.map(mapMockToRequest) : [];
-  } catch (e) {
-    const { data } = await api.get("/rh/demandes-en-attente");
-    const rows = Array.isArray(data?.demandes) ? data.demandes.map(mapMockToRequest) : [];
-    return filterRows(rows, filters);
+    const pendingParams = { ...params };
+    delete pendingParams.status;
+    const { data } = await api.get("/hr/requests/pending", { params: pendingParams });
+    const list = Array.isArray(data) ? data : [];
+    const mapped = list.map(mapMockToRequest);
+    return filterRows(mapped, filters);
+  } catch {
+    try {
+      const { data } = await api.get("/rh/demandes-en-attente");
+      const rows = Array.isArray(data?.demandes) ? data.demandes.map(mapMockToRequest) : [];
+      return filterRows(rows, filters);
+    } catch {
+      if (lastError) throw lastError;
+      return [];
+    }
   }
 }
 

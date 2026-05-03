@@ -6,6 +6,7 @@ import StatutBadge from "../../components/employee/StatutBadge";
 import ModalConfirmation from "../../components/commun/ModalConfirmation";
 import Spinner from "../../components/commun/Spinner";
 import { formaterDate } from "../../utils/calculJours";
+import { libelleAffichageTypeConge } from "../../utils/country";
 
 const normalizeForStatus = (statut) => {
   const raw = String(statut ?? "")
@@ -213,7 +214,16 @@ export default function HistoriqueDemandes() {
                               <StatutBadge statut={etat} />
                             </td>
                             <td className="p-4 text-slate-700">
-                              {titre ?? "--"}
+                              {(() => {
+                                const raw =
+                                  titre ??
+                                  demande?.typeConge ??
+                                  demande?.type;
+                                if (raw == null || String(raw).trim() === "") {
+                                  return "--";
+                                }
+                                return libelleAffichageTypeConge(raw);
+                              })()}
                             </td>
                             <td className="p-4">
                               {isAttente(etat) ? (

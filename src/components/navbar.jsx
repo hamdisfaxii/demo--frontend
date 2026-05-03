@@ -95,7 +95,7 @@ export default function Navbar() {
             <>
               <ProNavLink to="/rh/dashboard" label="Accueil" end />
               <ProNavLink to="/rh/decisions" label="Décisions RH" />
-              <ProNavLink to="/rh/requests" label="Demandes" />
+              <ProNavLink to="/rh/requests" label="Historique" />
               <ProNavLink to="/rh/calendar" label="Calendrier" />
               <ProNavLink to="/rh/configuration" label="Paramètres" />
               <ProNavLink to="/rh/jours-feries" label="Jours fériés" />

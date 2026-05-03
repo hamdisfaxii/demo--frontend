@@ -81,3 +81,46 @@ export function metaForCountry(isoRaw) {
   const code = normalizeCountryIsoForHr(isoRaw) || "TN";
   return COUNTRY_META[code] ?? COUNTRY_META.TN;
 }
+
+/** Sortie courte durée : uniquement pour le profil France (métropole + outre-mer → FR). TN / MA : pas d’accès écran ni compteur. */
+export function isFranceSortieCourteEligible(isoRaw) {
+  return normalizeCountryIsoForHr(isoRaw) === "FR";
+}
+
+/** Libellé affiché pour un type de congé à partir du code ou du libellé API. */
+export function libelleAffichageTypeConge(raw) {
+  if (raw == null || raw === "") return "—";
+  let s = String(raw).trim();
+  if (!s) return "—";
+
+  s = s.replace(/\bRTT\b/gi, "sortie courte durée").replace(/\s{2,}/g, " ").trim();
+
+  const key = s.toUpperCase().replace(/[\s-]+/g, "_");
+  const map = {
+    PAYE: "Congé payé",
+    CONGES_PAYES: "Congés payés",
+    CONGE_PAYE: "Congé payé",
+    COURTE_DUREE: "Sortie courte durée",
+    SORTIE_COURTE: "Sortie courte durée",
+    MALADIE: "Congé maladie",
+    CONGE_MALADIE: "Congé maladie",
+    SANS_SOLDE: "Congé sans solde",
+    CONGE_SANS_SOLDE: "Congé sans solde",
+    PARENTAL: "Congé parental",
+    ENFANT_MALADE: "Congé enfant malade",
+    EN_ATTENTE: "En attente",
+    ACCEPTE: "Accepté",
+    REFUSE: "Refusé",
+    ANNULE: "Annulé",
+  };
+  if (map[key]) return map[key];
+
+  if (key.includes("COURTE_DUREE") || key.includes("SHORT_LEAVE"))
+    return "Sortie courte durée";
+
+  if (/[a-zàâäéèêëïîôùûç]/i.test(s) && !/^[A-Z0-9_]+$/.test(s)) return s;
+
+  const human = key.replace(/_/g, " ").toLowerCase();
+  if (!human) return "—";
+  return human.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1));
+}

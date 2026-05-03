@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import api from "../../utils/api";
 import { useAuth } from "../../context/authcontext";
 import Spinner from "../../components/commun/Spinner";
+import { libelleAffichageTypeConge } from "../../utils/country";
 
 const parseMockUserId = () => {
   const token = localStorage.getItem("token");
@@ -321,7 +322,7 @@ export default function DecisionModule() {
                         {(req.employe?.country || "-") + " / " + (req.employe?.department || "-")}
                       </td>
                       <td className="p-4 text-slate-700">
-                        <div>{req.typeConge}</div>
+                        <div>{libelleAffichageTypeConge(req.typeConge)}</div>
                         <div className="text-xs text-slate-500">
                           {req.dateDebut} → {req.dateFin}
                         </div>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getHrRequests } from "../../utils/rhApi";
+import { downloadHistoriqueDemandesCsv } from "../../utils/exportHistoriqueRhCsv";
 import Spinner from "../../components/commun/Spinner";
 import StatutBadge from "../../components/employee/StatutBadge";
+import { libelleAffichageTypeConge } from "../../utils/country";
 
 export default function RequestsList() {
   const [loading, setLoading] = useState(false);
@@ -21,9 +23,11 @@ export default function RequestsList() {
     setLoading(true);
     setError("");
     try {
-      setRows(await getHrRequests(filters));
+      const data = await getHrRequests(filters);
+      setRows(Array.isArray(data) ? data : []);
     } catch {
-      setError("Impossible de charger les demandes.");
+      setError("Impossible de charger l'historique des demandes.");
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -31,20 +35,21 @@ export default function RequestsList() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chargement initial seulement
   }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-6 py-10">
         <h1 className="text-4xl font-bold text-slate-900 fade-in-up">
-          Liste des demandes
+          Historique des demandes
         </h1>
         <p
-          className="mt-3 text-sm text-slate-600 fade-in-up"
+          className="mt-3 text-sm text-slate-600 fade-in-up max-w-3xl leading-relaxed"
           style={{ animationDelay: "0.05s" }}
         >
-          Filtrez les demandes par statut, employé, pays, département ou
-          période.
+          Toutes les demandes (en attente, approuvées, rejetées). Filtrez par statut ou période, puis exportez au
+          format tableur CSV pour Excel (séparateur ; , encodage UTF-8 avec BOM).
         </p>
 
         <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm fade-in-up">
@@ -56,7 +61,7 @@ export default function RequestsList() {
               }
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="ALL">Tous</option>
+              <option value="ALL">Tous les statuts</option>
               <option value="PENDING">En attente</option>
               <option value="APPROVED">Approuvé</option>
               <option value="REJECTED">Rejeté</option>
@@ -102,14 +107,22 @@ export default function RequestsList() {
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={load}
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 hover:shadow-lg transition-all"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 hover:shadow-lg transition-all disabled:opacity-60"
             >
-              Charger
+              Appliquer les filtres
+            </button>
+            <button
+              type="button"
+              disabled={loading || rows.length === 0}
+              onClick={() => downloadHistoriqueDemandesCsv(rows)}
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Exporter (Excel CSV)
             </button>
           </div>
         </div>
@@ -156,7 +169,9 @@ export default function RequestsList() {
                       <td className="p-4 text-slate-700">
                         {r.employe?.prenom} {r.employe?.nom}
                       </td>
-                      <td className="p-4 text-slate-700">{r.typeConge}</td>
+                      <td className="p-4 text-slate-700">
+                        {libelleAffichageTypeConge(r.typeConge)}
+                      </td>
                       <td className="p-4 text-slate-700">
                         {r.dateDebut} → {r.dateFin}
                       </td>
@@ -176,7 +191,7 @@ export default function RequestsList() {
                 {!loading && rows.length === 0 && (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-slate-500">
-                      Aucun résultat.
+                      Aucun résultat pour ces critères.
                     </td>
                   </tr>
                 )}

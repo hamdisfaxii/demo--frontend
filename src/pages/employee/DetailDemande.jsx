@@ -5,6 +5,7 @@ import StatutBadge from "../../components/employee/StatutBadge";
 import ModalConfirmation from "../../components/commun/ModalConfirmation";
 import Spinner from "../../components/commun/Spinner";
 import { formaterDate } from "../../utils/calculJours";
+import { libelleAffichageTypeConge } from "../../utils/country";
 
 const normalizeForStatus = (statut) => {
   const raw = String(statut ?? "")
@@ -93,7 +94,11 @@ export default function DetailDemande() {
                       Titre
                     </div>
                     <div className="text-2xl font-bold text-slate-900 mt-2">
-                      {demandeDetail?.titre ?? demandeDetail?.type ?? "—"}
+                      {libelleAffichageTypeConge(
+                        demandeDetail?.titre ??
+                          demandeDetail?.typeConge ??
+                          demandeDetail?.type,
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center">

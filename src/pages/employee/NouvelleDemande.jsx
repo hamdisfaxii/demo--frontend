@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import { calculerJoursOuvres } from "../../utils/calculJours";
 import { useAuth } from "../../context/authcontext";
+import { isFranceSortieCourteEligible } from "../../utils/country";
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
@@ -39,22 +40,16 @@ export default function NouvelleDemande() {
 
   const titreInfo = useMemo(() => {
     const t = String(titre || "").toLowerCase();
-    if (t.includes("maladie") && !t.includes("enfant")) {
+    if (t.includes("maladie")) {
       return {
         variant: "maladie",
-        text: "Ce type n’est pas bloqué par le solde de congés payés ci-dessus : il suit la règle maladie (hors quota dans la config actuelle du mock).",
+        text: "Congé maladie : vérifiez le solde « maladie » sur votre tableau de bord ; il est distinct des congés payés ci-dessus.",
       };
     }
     if (t.includes("sans solde")) {
       return {
         variant: "sans",
-        text: "Congé sans solde : aucune vérification sur vos CP ni sur les permissions courte durée.",
-      };
-    }
-    if (t.includes("parent") || t.includes("enfant")) {
-      return {
-        variant: "famille",
-        text: "Congé famille : le ledger mock utilise PARENTAL ou ENFANT_MALADE (quota différent des CP — voir écran tableau de bord).",
+        text: "Congé sans solde : aucune vérification sur vos congés payés.",
       };
     }
     if (t.includes("payé")) {
@@ -123,8 +118,12 @@ export default function NouvelleDemande() {
         commentaire: commentaire || undefined,
       });
       navigate("/employee/historique");
-    } catch {
-      setFormError(error || "Erreur lors de l'ajout de la demande.");
+    } catch (err) {
+      const apiMsg =
+        err?.response?.data?.error ??
+        err?.response?.data?.message ??
+        (typeof err?.message === "string" ? err.message : null);
+      setFormError(apiMsg || error || "Erreur lors de l'ajout de la demande.");
     } finally {
       setSubmitting(false);
     }
@@ -159,11 +158,22 @@ export default function NouvelleDemande() {
               <span className="block text-sm font-semibold text-blue-800/90 mt-2">
                 (Congés payés uniquement — maladie / sans solde : pas le même quota)
               </span>
-              {soldeSummary && typeof soldeSummary.permission === "number" ? (
+              {isFranceSortieCourteEligible(user?.country) &&
+              soldeSummary &&
+              typeof soldeSummary.permission === "number" ? (
                 <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
-                  Permissions courte durée (RTT équivalent dans l’outil) : environ{" "}
-                  <strong>{soldeSummary.permission} jour(s)</strong> — à utiliser depuis « Sortie
-                  courte durée » (avec horaires imposées).
+                  RTT / sorties courtes (France) : environ{" "}
+                  <strong>{soldeSummary.permission} jour(s)</strong> — uniquement depuis l’écran «
+                  Sortie courte durée » (menu employé).
+                </span>
+              ) : !isFranceSortieCourteEligible(user?.country) &&
+                soldeSummary &&
+                typeof soldeSummary.autorisationsCourtesMoisRestantes === "number" ? (
+                <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
+                  Autorisations 2&nbsp;h (mois en cours) :{" "}
+                  <strong>{soldeSummary.autorisationsCourtesMoisRestantes}</strong> créneau(x) possible(s)
+                  sur {soldeSummary.autorisationsCourtesMoisMaximum ?? 3} — écran « Sortie courte
+                  durée ».
                 </span>
               ) : null}
             </div>
@@ -200,9 +210,8 @@ export default function NouvelleDemande() {
                 required
               >
                 <option value="Congé payé">Congé payé</option>
-                <option value="Congé sans solde">Congé sans solde</option>
-                <option value="Congé parental">Congé parental</option>
-                <option value="Congé enfant malade">Congé enfant malade</option>
+                <option value="Congé sans solde">Sans solde</option>
+                <option value="Congé maladie">Maladie</option>
               </select>
               {titreInfo && (
                 <div

@@ -5,7 +5,7 @@ import SoldeConge from "../../components/employee/SoldeConge";
 import CarteAction from "../../components/employee/CarteAction";
 import Spinner from "../../components/commun/Spinner";
 import { useAuth } from "../../context/authcontext";
-import { metaForCountry } from "../../utils/country";
+import { isFranceSortieCourteEligible, metaForCountry } from "../../utils/country";
 
 export default function DashboardEmploye() {
   const { user } = useAuth();
@@ -49,7 +49,11 @@ export default function DashboardEmploye() {
           {loading && soldeSummary == null ? (
             <Spinner />
           ) : (
-            <SoldeConge soldeSummary={soldeSummary} solde={solde} />
+            <SoldeConge
+              soldeSummary={soldeSummary}
+              solde={solde}
+              employeeCountry={user?.country}
+            />
           )}
           {error && (
             <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
@@ -84,8 +88,16 @@ export default function DashboardEmploye() {
 
           <div className="w-full sm:w-80">
             <CarteAction
-              titre="permission de courte durée"
-              description="Demandez une permission (1 à 2 heures) pendant la journée de travail."
+              titre={
+                isFranceSortieCourteEligible(user?.country)
+                  ? "Sortie courte durée (France — RTT)"
+                  : "Autorisation courte (2 h)"
+              }
+              description={
+                isFranceSortieCourteEligible(user?.country)
+                  ? "RTT en jours ouvrés ou plage horaire : uniquement sur cet écran, pas sur la demande de congé classique."
+                  : "Jusqu’à 3 autorisations de 2 h par mois (types : rendez-vous, urgence, autorisation)."
+              }
               boutonTexte="Faire une demande"
               icone={<div className="text-2xl">⏰</div>}
               onClick={() => navigate("/employee/sortie/new")}

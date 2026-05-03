@@ -143,6 +143,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/employee/conge/courte-duree"
+          element={
+            <RequireEmployee>
+              <NouvelleSortieCourteDuree />
+            </RequireEmployee>
+          }
+        />
+        <Route
           path="/employee/retard/new"
           element={
             <RequireEmployee>

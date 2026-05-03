@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { decideHrRequest, getHrRequestById } from "../../utils/rhApi";
 import Spinner from "../../components/commun/Spinner";
 import StatutBadge from "../../components/employee/StatutBadge";
+import { libelleAffichageTypeConge } from "../../utils/country";
 
 export default function RequestDetailsRh() {
   const { id } = useParams();
@@ -84,7 +85,9 @@ export default function RequestDetailsRh() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-slate-500">Type</div>
-                  <div className="text-sm text-slate-900">{request.typeConge}</div>
+                  <div className="text-sm text-slate-900">
+                    {libelleAffichageTypeConge(request.typeConge)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-slate-500">Période</div>

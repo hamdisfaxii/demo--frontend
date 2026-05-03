@@ -109,7 +109,7 @@ export default function HrDashboard() {
             to="/rh/requests"
             className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:border-blue-200 transition-all"
           >
-            Ouvrir la liste des demandes
+            Historique des demandes
           </Link>
           <Link
             to="/rh/decisions"

@@ -21,6 +21,67 @@ const normalizeStatut = (statut) => {
   return statut;
 };
 
+const stripAccent = (s) =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+
+/** True si la demande chevauche l’année civile (aligné backend). */
+const demandeCroiseAnnee = (d, annee) => {
+  if (annee == null || annee === "" || String(annee) === "tous") return true;
+  const y = Number(annee);
+  if (!Number.isFinite(y)) return true;
+  const deb = String(d?.dateDebut ?? d?.debut ?? "").slice(0, 10);
+  const fin = String(d?.dateFin ?? d?.fin ?? "").slice(0, 10);
+  if (!deb || !fin) return false;
+  const ys = `${y}-01-01`;
+  const ye = `${y}-12-31`;
+  return deb <= ye && fin >= ys;
+};
+
+/**
+ * Filtre côté client pour le mock (même règles que /conge/liste côté Spring).
+ */
+const filtreListeDemandesLocale = (list, filters = {}) => {
+  let out = Array.isArray(list) ? [...list] : [];
+  const { annee, statut } = filters;
+  if (annee != null && annee !== "" && String(annee) !== "tous") {
+    out = out.filter((d) => demandeCroiseAnnee(d, annee));
+  }
+  if (!statut || statut === "tous") return out;
+
+  const wanted = normalizeStatut(statut);
+  if (!wanted) return out;
+
+  const su = stripAccent(String(wanted)).toLowerCase().replace(/\s+/g, "_");
+
+  return out.filter((d) => {
+    const raw = stripAccent(String(d?.statut ?? d?.status ?? ""))
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+    const u = raw.toUpperCase();
+    if (su === "attente") {
+      return u.includes("ATTENTE") || u.includes("PENDING") || raw.includes("en_attente");
+    }
+    if (su === "validee") {
+      return (
+        u.includes("ACCEPTE") ||
+        u.includes("APPROUVE") ||
+        u.includes("APPROVED") ||
+        raw.includes("valid") ||
+        raw.includes("accord")
+      );
+    }
+    if (su === "refusee") {
+      return u.includes("REFUS") || u.includes("REJECT");
+    }
+    if (su === "annulee") {
+      return u.includes("ANNU") || raw.includes("cancel");
+    }
+    return true;
+  });
+};
+
 const pickId = (demande) => demande?.id ?? demande?._id ?? demande?.ID;
 
 const mapTitreToTypeCode = (titre) => {
@@ -45,7 +106,8 @@ const mapTitreToMockTypeCode = (titre) => {
   const typeCode = mapTitreToTypeCode(titre);
   if (typeCode === "MALADIE") return "CONGE_MALADIE";
   if (typeCode === "SANS_SOLDE") return "CONGE_SANS_SOLDE";
-  if (typeCode === "COURTE_DUREE") return "RTT";
+  /* Registre mock (France uniquement). */
+  if (typeCode === "COURTE_DUREE") return "SORTIE_COURTE";
   if (typeCode === "PARENTAL") return "PARENTAL";
   if (typeCode === "ENFANT_MALADE") return "ENFANT_MALADE";
   return "CONGES_PAYES";
@@ -58,6 +120,21 @@ const extractMockUserIdFromToken = () => {
   const parts = token.split("_");
   const id = Number(parts[1]);
   return Number.isFinite(id) ? id : null;
+};
+
+/** Identifiant pour le mock : token token_N_… ou objet user en localStorage. */
+const resolveMockUserIdForDemande = () => {
+  const fromToken = extractMockUserIdFromToken();
+  if (fromToken != null && Number.isFinite(fromToken)) return fromToken;
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    const id = Number(u?.id);
+    return Number.isFinite(id) ? id : null;
+  } catch {
+    return null;
+  }
 };
 
 const isMockSession = () => {
@@ -84,45 +161,89 @@ export function buildSoldeSummary(payload) {
     return {
       congesPayes: 0,
       permission: 0,
-      maladie: null,
+      maladie: 0,
+      maladieQuotaReference: null,
       maladieNonDecompte: true,
       maladieMessage:
-        "Congé maladie défini hors quota : il ne diminue ni vos congés payés ni vos permissions courte durée.",
+        "Congé maladie : suivi hors quota décompté dans l’application selon vos règles RH.",
       hintCongesPayes: "",
       details: [],
       soldeTotalTousTypes: null,
+      autorisationsCourtesMoisMaximum: null,
+      autorisationsCourtesMoisUtilisees: null,
+      autorisationsCourtesMoisAcceptees: null,
+      autorisationsCourtesMoisRestantes: null,
+      franceRtt: null,
     };
   if (typeof payload !== "object" || Array.isArray(payload)) {
     const n = Number(payload);
     return {
       congesPayes: Number.isFinite(n) ? Math.max(0, n) : 0,
       permission: 0,
-      maladie: null,
+      maladie: 0,
+      maladieQuotaReference: null,
       maladieNonDecompte: true,
       maladieMessage: "",
       hintCongesPayes: "",
       details: [],
       soldeTotalTousTypes: null,
+      autorisationsCourtesMoisMaximum: null,
+      autorisationsCourtesMoisUtilisees: null,
+      autorisationsCourtesMoisAcceptees: null,
+      autorisationsCourtesMoisRestantes: null,
+      franceRtt: null,
     };
   }
   const data = payload;
-  const cp = Number(data.soldeCongesPayes ?? data.solde ?? data.reste ?? 0);
-  const perm = Number(data.soldeCourteDuree ?? data.soldePermission ?? 0);
-  let maladieNum = null;
+  const pickJoursDetails = (details, typeEnum) => {
+    if (!Array.isArray(details)) return null;
+    const row = details.find((d) => d && String(d.typeConge) === typeEnum);
+    if (!row || row.joursRestants == null || row.joursRestants === "") return null;
+    const n = Number(row.joursRestants);
+    return Number.isFinite(n) ? Math.max(0, n) : null;
+  };
+  const cp = Number(
+    data.soldeCongesPayes ??
+      pickJoursDetails(data.details, "PAYE") ??
+      data.solde ??
+      data.reste ??
+      0,
+  );
+  const rawFrRem = data.franceRtt != null ? Number(data.franceRtt.rtt_remaining) : NaN;
+  const perm = Number.isFinite(rawFrRem)
+    ? Math.max(0, rawFrRem)
+    : Number(
+        data.soldeCourteDureeExact ??
+          data.soldeCourteDuree ??
+          data.soldePermission ??
+          pickJoursDetails(data.details, "COURTE_DUREE") ??
+          0,
+      );
+  let maladieNum = 0;
   if (data.soldeMaladie != null && data.soldeMaladie !== "") {
-    maladieNum = Number(data.soldeMaladie);
-    if (!Number.isFinite(maladieNum)) maladieNum = null;
+    const nMal = Number(data.soldeMaladie);
+    maladieNum = Number.isFinite(nMal) ? Math.max(0, nMal) : 0;
+  } else {
+    const picked = pickJoursDetails(data.details, "MALADIE");
+    maladieNum =
+      picked != null && Number.isFinite(Number(picked)) ? Math.max(0, Number(picked)) : 0;
   }
+  const malQuotaRef =
+    data.maladieQuotaReference != null && data.maladieQuotaReference !== ""
+      ? Number(data.maladieQuotaReference)
+      : null;
   const maladieNonDecompte =
     typeof data.maladieNonDecompte === "boolean"
       ? data.maladieNonDecompte
-      : maladieNum === null || maladieNum === undefined;
+      : Number.isFinite(malQuotaRef)
+        ? malQuotaRef <= 0
+        : false;
   const msgApi =
     typeof data.messageMaladie === "string" ? data.messageMaladie.trim() : "";
   const maladieMessage =
     msgApi ||
     (maladieNonDecompte
-      ? "Congé maladie défini hors quota : il ne diminue ni vos congés payés ni vos permissions courte durée (RTT)."
+      ? "Congé maladie défini hors quota : il ne diminue pas vos congés payés."
       : "");
   const hintCongesPayes =
     typeof data.hintCongesPayes === "string"
@@ -133,15 +254,44 @@ export function buildSoldeSummary(payload) {
     data.soldeTotalTousTypes != null ? Number(data.soldeTotalTousTypes) : null;
   if (!Number.isFinite(soldeTotalTousTypes)) soldeTotalTousTypes = null;
 
+  const authMaxRaw = data.autorisationsCourtesMoisMaximum;
+  const authMaxNum =
+    authMaxRaw != null && authMaxRaw !== "" && Number.isFinite(Number(authMaxRaw))
+      ? Math.max(0, Number(authMaxRaw))
+      : null;
+  const authUtil = Number(data.autorisationsCourtesMoisUtilisees);
+  const authAcc = Number(data.autorisationsCourtesMoisAcceptees);
+  const authRest = Number(data.autorisationsCourtesMoisRestantes);
+
+  const franceRtt =
+    data.franceRtt && typeof data.franceRtt === "object" && !Array.isArray(data.franceRtt)
+      ? {
+          total: Number(data.franceRtt.rtt_total),
+          used: Number(data.franceRtt.rtt_used),
+          remaining: Number(data.franceRtt.rtt_remaining),
+          pending: Number(data.franceRtt.rtt_pending),
+          accrualMode: data.franceRtt.rtt_accrual_mode,
+          contractSuspended: Boolean(data.franceRtt.contract_suspended),
+          lastUpdate: data.franceRtt.last_rtt_update,
+        }
+      : null;
+
   return {
     congesPayes: Number.isFinite(cp) ? Math.max(0, cp) : 0,
     permission: Number.isFinite(perm) ? Math.max(0, perm) : 0,
     maladie: maladieNum,
+    maladieQuotaReference:
+      malQuotaRef !== null && Number.isFinite(malQuotaRef) ? malQuotaRef : undefined,
     maladieNonDecompte,
     maladieMessage,
     hintCongesPayes,
     details: Array.isArray(data.details) ? data.details : [],
     soldeTotalTousTypes,
+    autorisationsCourtesMoisMaximum: authMaxNum,
+    autorisationsCourtesMoisUtilisees: Number.isFinite(authUtil) ? Math.max(0, authUtil) : null,
+    autorisationsCourtesMoisAcceptees: Number.isFinite(authAcc) ? Math.max(0, authAcc) : null,
+    autorisationsCourtesMoisRestantes: Number.isFinite(authRest) ? Math.max(0, authRest) : null,
+    franceRtt,
   };
 }
 
@@ -179,7 +329,7 @@ export default function useDemandes() {
     const mockFirst = isMockSession();
     if (mockFirst) {
       try {
-        const userId = extractMockUserIdFromToken();
+        const userId = resolveMockUserIdForDemande();
         if (!userId) {
           setDemandes([]);
           return [];
@@ -187,17 +337,7 @@ export default function useDemandes() {
         const response = await api.get(`/demande/user/${userId}`);
         let list = Array.isArray(response.data?.demandes) ? response.data.demandes : [];
         list = list.map(normalizeMockDemande);
-
-        if (filters?.statut && filters.statut !== "tous") {
-          const wanted = normalizeStatut(filters.statut);
-          if (wanted === "attente") {
-            list = list.filter((d) =>
-              String(d.statut ?? "")
-                .toUpperCase()
-                .includes("ATTENTE"),
-            );
-          }
-        }
+        list = filtreListeDemandesLocale(list, filters);
 
         setDemandes(list);
         return list;
@@ -226,7 +366,7 @@ export default function useDemandes() {
     } catch (e) {
       if (e?.response?.status === 404) {
         try {
-          const userId = extractMockUserIdFromToken();
+          const userId = resolveMockUserIdForDemande();
           if (!userId) {
             setDemandes([]);
             return [];
@@ -234,17 +374,7 @@ export default function useDemandes() {
           const response = await api.get(`/demande/user/${userId}`);
           let list = Array.isArray(response.data?.demandes) ? response.data.demandes : [];
           list = list.map(normalizeMockDemande);
-
-          if (filters?.statut && filters.statut !== "tous") {
-            const wanted = normalizeStatut(filters.statut);
-            if (wanted === "attente") {
-              list = list.filter((d) =>
-                String(d.statut ?? "")
-                  .toUpperCase()
-                  .includes("ATTENTE"),
-              );
-            }
-          }
+          list = filtreListeDemandesLocale(list, filters);
 
           setDemandes(list);
           return list;
@@ -311,10 +441,20 @@ export default function useDemandes() {
         const titre = isSortie
           ? "Permission courte durée"
           : data?.titre ?? data?.typeConge ?? "Congé payé";
-        const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
-        const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
+        const dateDebut = isSortie
+          ? data?.dateDebut ?? data?.dateSortie
+          : data?.dateDebut;
+        const dateFin = isSortie
+          ? data?.dateFin ?? data?.dateSortie
+          : data?.dateFin;
+        const mockUid = resolveMockUserIdForDemande();
+        if (mockUid == null) {
+          const msg = "Session incompatible avec le mock : reconnectez-vous.";
+          setError(msg);
+          throw new Error(msg);
+        }
         const mockPayload = {
-          userId: extractMockUserIdFromToken(),
+          userId: mockUid,
           typeConge: mapTitreToMockTypeCode(titre),
           dateDebut,
           dateFin,
@@ -338,11 +478,15 @@ export default function useDemandes() {
     try {
       const isSortie = data?.type === "sortie";
       const titre = isSortie
-        ? "Permission courte durée"
+        ? "Sortie courte durée"
         : data?.titre ?? data?.typeConge ?? "Congé payé";
       const commentaire = data?.commentaire ?? data?.motif ?? "";
-      const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
-      const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
+      const dateDebut = isSortie
+        ? data?.dateDebut ?? data?.dateSortie
+        : data?.dateDebut;
+      const dateFin = isSortie
+        ? data?.dateFin ?? data?.dateSortie
+        : data?.dateFin;
 
       const corePayload = {
         titre,
@@ -351,7 +495,7 @@ export default function useDemandes() {
         commentaire,
         heureDebut: data?.heureDebut ?? null,
         heureFin: data?.heureFin ?? null,
-        typeConge: mapTitreToTypeCode(titre),
+        demandeSortieCourte: Boolean(isSortie),
         motif: commentaire,
       };
 
@@ -363,12 +507,22 @@ export default function useDemandes() {
       if (e?.response?.status === 404) {
         const isSortie = data?.type === "sortie";
         const titre = isSortie
-          ? "Permission courte durée"
+          ? "Sortie courte durée"
           : data?.titre ?? data?.typeConge ?? "Congé payé";
-        const dateDebut = isSortie ? data?.dateSortie : data?.dateDebut;
-        const dateFin = isSortie ? data?.dateSortie : data?.dateFin;
+        const dateDebut = isSortie
+          ? data?.dateDebut ?? data?.dateSortie
+          : data?.dateDebut;
+        const dateFin = isSortie
+          ? data?.dateFin ?? data?.dateSortie
+          : data?.dateFin;
+        const mockUidFb = resolveMockUserIdForDemande();
+        if (mockUidFb == null) {
+          const msg = "Session incompatible avec le mock : reconnectez-vous.";
+          setError(msg);
+          throw new Error(msg);
+        }
         const mockPayload = {
-          userId: extractMockUserIdFromToken(),
+          userId: mockUidFb,
           typeConge: mapTitreToMockTypeCode(titre),
           dateDebut,
           dateFin,
