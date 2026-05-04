@@ -4,7 +4,7 @@ import useDemandes from "../../hooks/useDemandes";
 import { useAuth } from "../../context/authcontext";
 import { isFranceSortieCourteEligible } from "../../utils/country";
 
-const NON_FR_CAP = 3;
+const NON_FR_CAP = 2;
 const FIXED_MINUTES = 120;
 
 function pad2(n) {
@@ -135,7 +135,7 @@ export default function NouvelleSortieCourteDuree() {
     if (!fr) {
       const capRest = typeof restantes === "number" ? restantes : maxMois;
       if (capRest <= 0) {
-        setFormError("Limite mensuelle de 3 autorisations courtes atteinte.");
+        setFormError("Limite mensuelle de 2 autorisations courtes (2 h) atteinte.");
         return;
       }
       const md = minutesDelta(heureDebut, heureFin);
@@ -192,7 +192,7 @@ export default function NouvelleSortieCourteDuree() {
         <p className="mt-3 text-slate-600">
           {fr
             ? "RTT journée, demi-journée ou plage horaire : la durée en jours ouvrés est calculée côté serveur à partir des dates et décomptée de votre solde RTT."
-            : `Jusqu’à ${maxMois} autorisations de 2 h par mois calendaire (créées ou en attente). La 4ᵉ est refusée.`}
+            : `Jusqu’à ${maxMois} autorisations de 2 h par mois calendaire (créées ou en attente). La ${maxMois + 1}ᵉ est refusée.`}
         </p>
 
         <div

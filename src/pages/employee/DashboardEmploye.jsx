@@ -96,7 +96,7 @@ export default function DashboardEmploye() {
               description={
                 isFranceSortieCourteEligible(user?.country)
                   ? "RTT en jours ouvrés ou plage horaire : uniquement sur cet écran, pas sur la demande de congé classique."
-                  : "Jusqu’à 3 autorisations de 2 h par mois (types : rendez-vous, urgence, autorisation)."
+                  : "Jusqu’à 2 autorisations de 2 h par mois (types : rendez-vous, urgence, autorisation)."
               }
               boutonTexte="Faire une demande"
               icone={<div className="text-2xl">⏰</div>}

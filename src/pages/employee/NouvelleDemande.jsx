@@ -172,7 +172,7 @@ export default function NouvelleDemande() {
                 <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
                   Autorisations 2&nbsp;h (mois en cours) :{" "}
                   <strong>{soldeSummary.autorisationsCourtesMoisRestantes}</strong> créneau(x) possible(s)
-                  sur {soldeSummary.autorisationsCourtesMoisMaximum ?? 3} — écran « Sortie courte
+                  sur {soldeSummary.autorisationsCourtesMoisMaximum ?? 2} — écran « Sortie courte
                   durée ».
                 </span>
               ) : null}

@@ -95,6 +95,7 @@ const mapTitreToTypeCode = (titre) => {
   if (normalized.includes("maladie")) return "MALADIE";
   if (normalized.includes("sans solde")) return "SANS_SOLDE";
   if (normalized.includes("parent")) return "PARENTAL";
+  if (normalized.includes("retard")) return "RETARD";
   if (normalized.includes("courte")) return "COURTE_DUREE";
   if (normalized.includes("permission") || normalized.includes("sortie")) {
     return "COURTE_DUREE";
@@ -106,12 +107,52 @@ const mapTitreToMockTypeCode = (titre) => {
   const typeCode = mapTitreToTypeCode(titre);
   if (typeCode === "MALADIE") return "CONGE_MALADIE";
   if (typeCode === "SANS_SOLDE") return "CONGE_SANS_SOLDE";
+  if (typeCode === "RETARD") return "RETARD_DEMAND";
   /* Registre mock (France uniquement). */
   if (typeCode === "COURTE_DUREE") return "SORTIE_COURTE";
   if (typeCode === "PARENTAL") return "PARENTAL";
   if (typeCode === "ENFANT_MALADE") return "ENFANT_MALADE";
   return "CONGES_PAYES";
 };
+
+/** Corps POST /api/demande (mock) aligné sur les règles métier (retard, sortie 2 h, congé payé). */
+function buildMockCreerDemandePayload(data, mockUid) {
+  const isSortie = data?.type === "sortie";
+  const isRetard = data?.type === "retard";
+  if (isRetard) {
+    const dateJour = data?.date ?? data?.dateDebut;
+    const ha = data?.heureArrivee ?? null;
+    return {
+      userId: mockUid,
+      typeConge: "RETARD_DEMAND",
+      dateDebut: dateJour,
+      dateFin: dateJour,
+      nombreJours: 0,
+      heureArrivee: ha,
+      heureDebut: ha,
+      heureFin: null,
+      raison: data?.commentaire ?? data?.motif ?? "",
+    };
+  }
+  const titre = isSortie
+    ? "Permission courte durée"
+    : data?.titre ?? data?.typeConge ?? "Congé payé";
+  const dateDebut = isSortie
+    ? data?.dateDebut ?? data?.dateSortie
+    : data?.dateDebut;
+  const dateFin = isSortie
+    ? data?.dateFin ?? data?.dateSortie
+    : data?.dateFin;
+  return {
+    userId: mockUid,
+    typeConge: mapTitreToMockTypeCode(titre),
+    dateDebut,
+    dateFin,
+    heureDebut: data?.heureDebut ?? null,
+    heureFin: data?.heureFin ?? null,
+    raison: data?.commentaire ?? data?.motif ?? "",
+  };
+}
 
 const extractMockUserIdFromToken = () => {
   const token = localStorage.getItem("token");
@@ -437,31 +478,13 @@ export default function useDemandes() {
     const mockFirst = isMockSession();
     if (mockFirst) {
       try {
-        const isSortie = data?.type === "sortie";
-        const titre = isSortie
-          ? "Permission courte durée"
-          : data?.titre ?? data?.typeConge ?? "Congé payé";
-        const dateDebut = isSortie
-          ? data?.dateDebut ?? data?.dateSortie
-          : data?.dateDebut;
-        const dateFin = isSortie
-          ? data?.dateFin ?? data?.dateSortie
-          : data?.dateFin;
         const mockUid = resolveMockUserIdForDemande();
         if (mockUid == null) {
           const msg = "Session incompatible avec le mock : reconnectez-vous.";
           setError(msg);
           throw new Error(msg);
         }
-        const mockPayload = {
-          userId: mockUid,
-          typeConge: mapTitreToMockTypeCode(titre),
-          dateDebut,
-          dateFin,
-          heureDebut: data?.heureDebut ?? null,
-          heureFin: data?.heureFin ?? null,
-          raison: data?.commentaire ?? data?.motif ?? "",
-        };
+        const mockPayload = buildMockCreerDemandePayload(data, mockUid);
         const fallback = await api.post("/demande", mockPayload);
         return fallback.data?.demande ?? fallback.data;
       } catch (fallbackError) {
@@ -477,23 +500,32 @@ export default function useDemandes() {
 
     try {
       const isSortie = data?.type === "sortie";
+      const isRetard = data?.type === "retard";
       const titre = isSortie
         ? "Sortie courte durée"
-        : data?.titre ?? data?.typeConge ?? "Congé payé";
+        : isRetard
+          ? "J'arrive en retard"
+          : data?.titre ?? data?.typeConge ?? "Congé payé";
       const commentaire = data?.commentaire ?? data?.motif ?? "";
       const dateDebut = isSortie
         ? data?.dateDebut ?? data?.dateSortie
-        : data?.dateDebut;
+        : isRetard
+          ? data?.date ?? data?.dateDebut
+          : data?.dateDebut;
       const dateFin = isSortie
         ? data?.dateFin ?? data?.dateSortie
-        : data?.dateFin;
+        : isRetard
+          ? data?.date ?? data?.dateDebut
+          : data?.dateFin;
 
       const corePayload = {
         titre,
         dateDebut,
         dateFin,
         commentaire,
-        heureDebut: data?.heureDebut ?? null,
+        heureDebut: isRetard
+          ? data?.heureArrivee ?? null
+          : data?.heureDebut ?? null,
         heureFin: data?.heureFin ?? null,
         demandeSortieCourte: Boolean(isSortie),
         motif: commentaire,
@@ -505,31 +537,13 @@ export default function useDemandes() {
     } catch (e) {
       // Compatibility fallback when mock backend is running.
       if (e?.response?.status === 404) {
-        const isSortie = data?.type === "sortie";
-        const titre = isSortie
-          ? "Sortie courte durée"
-          : data?.titre ?? data?.typeConge ?? "Congé payé";
-        const dateDebut = isSortie
-          ? data?.dateDebut ?? data?.dateSortie
-          : data?.dateDebut;
-        const dateFin = isSortie
-          ? data?.dateFin ?? data?.dateSortie
-          : data?.dateFin;
         const mockUidFb = resolveMockUserIdForDemande();
         if (mockUidFb == null) {
           const msg = "Session incompatible avec le mock : reconnectez-vous.";
           setError(msg);
           throw new Error(msg);
         }
-        const mockPayload = {
-          userId: mockUidFb,
-          typeConge: mapTitreToMockTypeCode(titre),
-          dateDebut,
-          dateFin,
-          heureDebut: data?.heureDebut ?? null,
-          heureFin: data?.heureFin ?? null,
-          raison: data?.commentaire ?? data?.motif ?? "",
-        };
+        const mockPayload = buildMockCreerDemandePayload(data, mockUidFb);
         try {
           const fallback = await api.post("/demande", mockPayload);
           return fallback.data?.demande ?? fallback.data;
