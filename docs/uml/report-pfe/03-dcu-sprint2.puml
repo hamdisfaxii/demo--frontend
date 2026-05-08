@@ -1,0 +1,25 @@
+@startuml PFE_03_DCU_Sprint2
+!theme cerulean-outline
+title Cas d'utilisation — Sprint 2\nCycle employé (demandes)
+
+left to right direction
+
+actor "Employé" as EMP
+
+rectangle "Sprint 2" {
+  usecase (Créer une demande\nCongeController / DemandeController\n+ CongeService) as C1
+  usecase (Calcul automatique\ndes jours ouvrés / demi-journées\nDemandeConge) as C2
+  usecase (Consulter liste & détail\n/api/conge/* , /api/demandes/*) as C3
+  usecase (Annuler une demande\nen attente — PUT …/annuler) as C4
+  usecase (Gestion des statuts\nEN_ATTENTE, ACCEPTE, REFUSE, ANNULE) as C5
+}
+
+EMP --> C1
+EMP --> C2
+EMP --> C3
+EMP --> C4
+EMP --> C5
+
+C1 ..> C2 : <<include>>
+
+@enduml

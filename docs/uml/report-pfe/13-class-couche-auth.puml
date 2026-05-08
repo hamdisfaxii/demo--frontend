@@ -1,0 +1,77 @@
+@startuml PFE_13_Class_Auth
+!theme cerulean-outline
+skinparam classAttributeIconSize 0
+
+title Diagramme de classes — Couche authentification,\nJWT et synchro Dolibarr post-login
+
+package com.example.conges.entity {
+  enum Role <<enumeration>> {
+    EMPLOYE
+    RH
+    MANAGER
+    ADMIN
+    --
+    + value : String
+  }
+
+  class UserEntity <<Entity>> {
+    + Long id
+    + Long dolibarrId
+    + String email
+    + Role role
+    + String pays
+    + ...
+  }
+
+  UserEntity --> Role
+}
+
+package com.example.conges.service {
+  class AuthService <<@Service>> {
+    + login(LoginRequest) : AuthResponse
+    - scheduleFullDolibarrSyncAfterCommitIfConfigured()
+  }
+  class JwtService
+  class DolibarrService {
+    + authenticateUserViaApi(...)
+    + isDolibarrConnectionConfigured() : boolean
+  }
+  class DolibarrBackgroundSyncFacade <<@Component>> {
+    + triggerFullSyncAfterLogin()
+  }
+  class DolibarrSyncService <<@Service>> {
+    + syncAllDataFromDolibarr()
+  }
+}
+
+package com.example.conges.controller {
+  class AuthController <<@RestController>>
+}
+
+package com.example.conges.config {
+  class SecurityConfig <<@Configuration>>
+  class JwtAuthFilter <<@Component>>
+  class AppConfiguration <<@Configuration>> {
+    + taskExecutor() : Executor
+  }
+}
+
+interface UserRepository <<Spring Data>>
+
+AuthController --> AuthService
+AuthService --> JwtService
+AuthService --> DolibarrService
+AuthService --> UserRepository
+AuthService ..> DolibarrBackgroundSyncFacade : afterCommit
+DolibarrBackgroundSyncFacade --> DolibarrSyncService
+DolibarrSyncService --> DolibarrService
+
+JwtAuthFilter --> JwtService
+JwtAuthFilter --> UserRepository
+SecurityConfig o-- JwtAuthFilter
+
+note bottom of DolibarrBackgroundSyncFacade
+@Async("taskExecutor")\nBean **taskExecutor** dans AppConfiguration
+end note
+
+@enduml

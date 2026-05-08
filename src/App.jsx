@@ -18,6 +18,7 @@ import RequestsList from "./pages/rh/RequestsList";
 import RequestDetailsRh from "./pages/rh/RequestDetailsRh";
 import CalendarRh from "./pages/rh/CalendarRh";
 import ConfigurationRh from "./pages/rh/ConfigurationRh";
+import SoldesRh from "./pages/rh/SoldesRh";
 
 function App() {
   return (
@@ -50,7 +51,16 @@ function AppRoutes() {
             />
           }
         />
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to={isRH ? "/rh/dashboard" : "/employee/dashboard"} replace />
+            ) : (
+              <Login />
+            )
+          }
+        />
 
         <Route path="/home" element={<Home />} />
         <Route
@@ -106,6 +116,14 @@ function AppRoutes() {
           element={
             <RequireRH>
               <DecisionModule />
+            </RequireRH>
+          }
+        />
+        <Route
+          path="/rh/soldes"
+          element={
+            <RequireRH>
+              <SoldesRh />
             </RequireRH>
           }
         />

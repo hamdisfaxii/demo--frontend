@@ -1,0 +1,29 @@
+@startuml PFE_11_SEQ_SyncDolibarr
+!theme cerulean-outline
+title Séquence — Synchronisation Dolibarr\nvia API (membre du GRH ou tâche planifiée)
+
+actor "Membre du GRH" as GRH
+participant "DolibarrController\n/api/dolibarr/*" as API
+participant "DolibarrSyncService" as SYNC
+participant "DolibarrService" as DS
+database "ERP Dolibarr" as EXT
+database "MySQL local" as DB
+participant "DolibarrSyncLogService" as LOG
+
+GRH -> API : POST sync-all / sync-*\n(+ JWT hors profil dev)
+API -> SYNC : syncAllDataFromDolibarr()\nou opérations partielles
+
+SYNC -> DS : employés, types, féries, allocations…
+DS <-> EXT : HTTP REST /\nJDBC fallback
+DS --> DB : upsert entités JPA
+
+SYNC -> LOG : dolibarr_sync_logs
+
+SYNC --> API : DolibarrFullSyncResponse
+API --> GRH : JSON rapport
+
+note bottom
+Même **DolibarrSyncService.syncAllDataFromDolibarr()**\nque la synchro déclenchée **après login**\n(DolibarrBackgroundSyncFacade, async).
+end note
+
+@enduml

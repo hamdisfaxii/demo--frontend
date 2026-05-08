@@ -148,6 +148,7 @@ export default function RequestsList() {
                   <th className="p-4 font-semibold text-slate-900">Employé</th>
                   <th className="p-4 font-semibold text-slate-900">Type</th>
                   <th className="p-4 font-semibold text-slate-900">Période</th>
+                  <th className="p-4 font-semibold text-slate-900">Durée</th>
                   <th className="p-4 font-semibold text-slate-900">Statut</th>
                   <th className="p-4 font-semibold text-slate-900">Détails</th>
                 </tr>
@@ -155,7 +156,7 @@ export default function RequestsList() {
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-500">
+                    <td colSpan={6} className="p-6 text-center text-slate-500">
                       Chargement...
                     </td>
                   </tr>
@@ -175,6 +176,32 @@ export default function RequestsList() {
                       <td className="p-4 text-slate-700">
                         {r.dateDebut} → {r.dateFin}
                       </td>
+                      <td className="p-4 text-slate-700">
+                        {(() => {
+                          const exact = r?.nombreJoursExact ?? null;
+                          const raw = r?.nombreJours ?? null;
+                          const n =
+                            typeof exact === "number"
+                              ? exact
+                              : typeof raw === "number"
+                                ? raw
+                                : Number(raw);
+                          const val = Number.isFinite(n) ? n : null;
+                          const sh = String(r?.startHalfDay ?? "").toUpperCase();
+                          const eh = String(r?.endHalfDay ?? "").toUpperCase();
+                          const labelHalf = (h) =>
+                            h === "MORNING"
+                              ? "Matin"
+                              : h === "AFTERNOON"
+                                ? "Après-midi"
+                                : "";
+                          const halfInfo =
+                            sh || eh
+                              ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})`
+                              : "";
+                          return val == null ? "-" : `${val} j${halfInfo}`;
+                        })()}
+                      </td>
                       <td className="p-4">
                         <StatutBadge statut={r.statut} />
                       </td>
@@ -190,7 +217,7 @@ export default function RequestsList() {
                   ))}
                 {!loading && rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-500">
+                    <td colSpan={6} className="p-6 text-center text-slate-500">
                       Aucun résultat pour ces critères.
                     </td>
                   </tr>

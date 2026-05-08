@@ -1,0 +1,88 @@
+# Lancer : depuis ce dossier (pfe-frontend-main)
+#   docker compose up --build
+#
+# Avec Dolibarr dans Docker :
+#   docker compose --profile dolibarr up --build
+#
+# Variables de substitution : copier env.compose.example vers .env (à côté de ce fichier).
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: conges-mysql
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-conges_db}
+      MYSQL_USER: ${DB_APP_USER:-conges_app}
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD:-conges_app_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - conges_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build:
+      context: ../gestion-conges-backend-main
+      dockerfile: Dockerfile
+    container_name: conges-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ../gestion-conges-backend-main/.env.properties
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_APP_USER:-conges_app}
+      # Spring lit souvent DB_PASSWORD (voir application.properties)
+      DB_PASSWORD: ${DB_APP_PASSWORD:-conges_app_password}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SERVER_PORT: 8080
+      # Prime sur le .env local : URL vue depuis le conteneur (pas localhost).
+      DOLIBARR_URL: ${DOLIBARR_URL:-http://host.docker.internal/dolibarr/api/index.php}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: conges-frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5176}:80"
+
+  dolibarr:
+    profiles:
+      - dolibarr
+    image: dolibarr/dolibarr:latest
+    container_name: conges-dolibarr
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DOLI_DB_HOST: mysql
+      DOLI_DB_NAME: ${DOLIBARR_DB_NAME:-dolibarr}
+      DOLI_DB_USER: ${DOLIBARR_DB_USER:-root}
+      DOLI_DB_PASSWORD: ${DOLIBARR_DB_PASSWORD:-root}
+      DOLI_DB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "${DOLIBARR_HTTP_PORT:-8090}:80"
+    volumes:
+      - dolibarr_documents:/var/www/documents
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  conges_mysql_data:
+  dolibarr_documents:

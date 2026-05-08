@@ -1,0 +1,21 @@
+@startuml PFE_06_DCU_Sprint5
+!theme cerulean-outline
+title Cas d'utilisation — Sprint 5\nIA, UX et validation finale
+
+left to right direction
+
+actor "Employé" as EMP
+actor "GRH\n(groupe RH)" as GRH
+
+rectangle "Sprint 5" {
+  usecase (Suggestions de dates\n& détection conflits\n/api/ai/*) as A1
+  usecase (Interface utilisateur\nReact — employé & GRH) as A2
+  usecase (Tests d'intégration\n& recette finale) as A3
+}
+
+EMP --> A1
+EMP --> A2
+GRH --> A2
+GRH --> A3
+
+@enduml

@@ -1,0 +1,37 @@
+@startuml PFE_02_DCU_Sprint1
+!theme cerulean-outline
+title Cas d'utilisation — Sprint 1\nFondations (auth JWT, session, BDD, synchro login)
+
+left to right direction
+
+actor "Employé" as EMP
+actor "GRH\n(groupe RH)" as GRH
+actor "Dolibarr" as Doli
+
+rectangle "Sprint 1" {
+  usecase (POST /api/auth/login) as U1
+  usecase (GET /api/auth/me) as U2
+  usecase (POST /api/auth/logout) as U3
+  usecase (Session stateless JWT\nJwtAuthFilter + JwtService) as U4
+  usecase (Profils utilisateurs\nUserEntity + Role) as U5
+  usecase (Base de données MySQL\nJPA / Hibernate) as U6
+  usecase (Synchro Dolibarr\ndifférée après login\nsi ERP configuré) as U7
+}
+
+EMP --> U1
+EMP --> U2
+EMP --> U3
+GRH --> U1
+GRH --> U2
+GRH --> U3
+
+U1 ..> Doli : identité
+U4 ..> U2
+U5 ..> U1
+U7 .u.> U1 : <<extend>>
+
+note bottom of U7
+AuthService : après **commit**,\nDolibarrBackgroundSyncFacade\n@Async("taskExecutor")\n→ DolibarrSyncService.syncAllDataFromDolibarr()\nsi isDolibarrConnectionConfigured()
+end note
+
+@enduml

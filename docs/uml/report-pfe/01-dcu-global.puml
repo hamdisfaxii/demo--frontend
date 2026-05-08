@@ -1,0 +1,71 @@
+@startuml PFE_01_DCU_Global
+!theme cerulean-outline
+skinparam usecase {
+  BackgroundColor #EBF8FF
+  BorderColor #2C5282
+}
+skinparam rectangle {
+  RoundCorner 12
+  BackgroundColor #F7FAFC
+  BorderColor #2B6CB0
+}
+
+title Diagramme de cas d'utilisation global\nGestion des congés — Employé et GRH (groupe des RH)
+
+left to right direction
+
+actor "Employé" as EMP
+actor "GRH\n(groupe des responsables RH)" as GRH
+actor "Système Dolibarr\n(ERP & CRM)" as Doli
+actor "Service e-mail\n(SMTP)" as Mail
+
+rectangle "Système de gestion des congés" {
+  usecase (S'authentifier\nJWT via Dolibarr) as UC1
+  usecase (Consulter profil\nGET /api/auth/me) as UC2
+  usecase (Se déconnecter\nPOST /api/auth/logout) as UC3
+
+  usecase (Créer / consulter /\nannuler ses demandes) as UC4
+  usecase (Solde, calendrier,\nhistorique personnel) as UC5
+
+  usecase (Traiter les demandes\nvalider / rejeter) as UC6
+  usecase (Tableau de bord & statistiques\nGET /api/rh/dashboard) as UC7
+  usecase (Configuration RH\n/api/hr-config/*) as UC8
+  usecase (Soldes équipes\nGET/PUT /api/hr/balances) as UC9
+  usecase (Historique & exports\n/api/history/*) as UC10
+  usecase (Synchronisation Dolibarr\nAPI + synchro auto après login) as UC11
+  usecase (Suggestions & analyse\nGET /api/ai/*) as UC12
+}
+
+EMP --> UC1
+EMP --> UC2
+EMP --> UC3
+EMP --> UC4
+EMP --> UC5
+EMP --> UC12
+
+GRH --> UC1
+GRH --> UC2
+GRH --> UC3
+GRH --> UC6
+GRH --> UC7
+GRH --> UC8
+GRH --> UC9
+GRH --> UC10
+GRH --> UC11
+
+UC1 ..> Doli : <<authenticate>>
+UC11 ..> Doli : <<REST / JDBC>>
+UC4 ..> Mail : <<optionnel>>
+UC6 ..> Mail : <<optionnel>>
+
+note bottom of GRH
+Le GRH est modélisé comme **un acteur organisationnel** :\nplusieurs personnes partagent ces cas d'utilisation.\nTechniquement : rôles RH / ADMIN selon configuration.
+end note
+
+legend right
+|= Acteur |= Sens |
+| Employé | Individu — ses demandes |
+| GRH | Équipe RH — pilotage & intégration |
+endlegend
+
+@enduml

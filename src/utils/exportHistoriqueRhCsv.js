@@ -31,10 +31,13 @@ export function downloadHistoriqueDemandesCsv(rows, filenamePrefix = "historique
     "Email",
     "Pays",
     "Département",
+    "Approuvé par",
     "Type",
     "Date début",
     "Date fin",
     "Jours",
+    "Demi-journée début",
+    "Demi-journée fin",
     "Statut",
     "Motif",
     "Commentaire RH",
@@ -45,16 +48,21 @@ export function downloadHistoriqueDemandesCsv(rows, filenamePrefix = "historique
   for (const r of rows || []) {
     const employeNom = `${r?.employe?.prenom ?? ""} ${r?.employe?.nom ?? ""}`.trim();
     const norm = normalizeStatus(r.statut);
+    const ap = r?.approuvePar ?? r?.approvedBy ?? null;
+    const approverName = `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim() || (ap?.email ?? "");
     lines.push(
       [
         csvCell(employeNom),
         csvCell(r?.employe?.email ?? ""),
         csvCell(r?.employe?.country ?? ""),
         csvCell(r?.employe?.department ?? ""),
+        csvCell(approverName),
         csvCell(r.typeConge ?? ""),
         csvCell(r.dateDebut ?? ""),
         csvCell(r.dateFin ?? ""),
-        csvCell(r.nombreJours ?? ""),
+        csvCell(r.nombreJoursExact ?? r.nombreJours ?? ""),
+        csvCell(r.startHalfDay ?? ""),
+        csvCell(r.endHalfDay ?? ""),
         csvCell(statutLibelle(norm)),
         csvCell(r.motif ?? ""),
         csvCell(r.commentaireRh ?? ""),

@@ -1,0 +1,38 @@
+@startuml PFE_10_SEQ_DecisionGRH
+!theme cerulean-outline
+title Séquence — Validation / rejet d'une demande\n(acteur organisationnel : GRH — un membre incarne l'action)
+
+actor "Membre du GRH" as GRH
+participant "UI RH\n(RequestsList, RequestDetailsRh…)" as FE
+participant "HrDecisionController\nPOST …/{demandeId}/decision" as HC
+participant "HrDecisionService" as HS
+participant "CongeService\nvaliderDemande" as CS
+database "demandes_conge" as DEM
+participant "HistoryService" as HIS
+participant "NotificationService" as NOTIF
+participant "DolibarrService" as DOLI
+
+GRH -> FE : décision + commentaire
+FE -> HC : POST decision + JWT
+
+HC -> HS : processDecision(actor, request)
+HS -> DEM : findById(demandeId)
+HS -> CS : validerDemande(id, actorId,\napprove?, commentaire)
+
+CS -> DEM : update statut\n(ACCEPTE ou REFUSE)
+CS -> HIS : APPROVE / REJECT
+CS -> NOTIF : e-mails si configurés
+
+opt push vers ERP
+  CS -> DOLI : synchro absence validée\n(si applicable)
+end
+
+CS --> HS : DemandeCongeResponse
+HS --> HC
+HC --> FE : 200 OK
+
+note bottom of GRH
+**GRH** = groupe des RH ; le diagramme montre\nun représentant qui exécute le cas d'utilisation.
+end note
+
+@enduml

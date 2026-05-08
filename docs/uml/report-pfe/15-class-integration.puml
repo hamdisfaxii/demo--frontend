@@ -1,0 +1,50 @@
+@startuml PFE_15_Class_Integration
+!theme cerulean-outline
+skinparam classAttributeIconSize 0
+
+title Diagramme de classes — Intégration Dolibarr,\njournaux et historique
+
+package com.example.conges.entity {
+  class DolibarrSyncLog <<Entity>>
+  enum SyncDirection <<enumeration>>
+  enum SyncStatus <<enumeration>>
+  DolibarrSyncLog --> SyncDirection
+  DolibarrSyncLog --> SyncStatus
+
+  class History <<Entity>> {
+    + Long userId
+    + Long demandeId
+    + HistoryActionType actionType
+    + String details
+    + ...
+  }
+
+  enum HistoryActionType <<enumeration>> {
+    CREATE
+    APPROVE
+    REJECT
+    SYNCED_DOLIBARR
+    LOGIN
+    LOGOUT
+    OTHER
+  }
+
+  History --> HistoryActionType
+}
+
+package com.example.conges.service {
+  class DolibarrSyncService <<@Service>>
+  class DolibarrSyncLogService <<@Service>>
+  class HistoryService <<@Service>>
+  class DolibarrService <<@Service>>
+}
+
+interface DolibarrSyncLogRepository <<Spring Data>>
+interface HistoryRepository <<Spring Data>>
+
+DolibarrSyncService --> DolibarrService
+DolibarrSyncService --> DolibarrSyncLogService
+DolibarrSyncLogService --> DolibarrSyncLogRepository
+HistoryService --> HistoryRepository
+
+@enduml

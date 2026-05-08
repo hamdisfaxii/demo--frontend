@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import SoldeConge from "../../components/employee/SoldeConge";
@@ -13,9 +13,21 @@ export default function DashboardEmploye() {
   const navigate = useNavigate();
   const paysMeta = metaForCountry(user?.country);
 
-  useEffect(() => {
+  const reloadSoldes = useCallback(() => {
     fetchSolde().catch(() => {});
   }, [fetchSolde]);
+
+  useEffect(() => {
+    reloadSoldes();
+  }, [reloadSoldes]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") reloadSoldes();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [reloadSoldes]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -25,10 +37,7 @@ export default function DashboardEmploye() {
         </h1>
         {user && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-            <span
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm"
-              title="Pays RH (DOM français regroupés en France pour les quotas)"
-            >
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
               <span className="text-lg" aria-hidden>
                 {paysMeta.flag}
               </span>
@@ -46,6 +55,16 @@ export default function DashboardEmploye() {
         )}
 
         <div className="mt-8">
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => reloadSoldes()}
+              disabled={loading}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {loading ? "Chargement…" : "Actualiser"}
+            </button>
+          </div>
           {loading && soldeSummary == null ? (
             <Spinner />
           ) : (

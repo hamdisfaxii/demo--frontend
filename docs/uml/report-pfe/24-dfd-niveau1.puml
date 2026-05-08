@@ -1,0 +1,49 @@
+@startuml PFE_24_DFD_Niveau1
+!theme cerulean-outline
+title Diagramme de flux de données — Niveau 1\n(processus logiques backend)
+
+rectangle "Employé" as E
+rectangle "GRH\n(groupe RH)" as G
+
+rectangle "P1 — Authentification\n+ synchro Dolibarr\nasync après login" as P1 <<process>> #E6FFFA
+rectangle "P2 — Demandes & soldes\nemployé" as P2 <<process>> #C6F6D5
+rectangle "P3 — Pilotage GRH\n(dashboard, décisions)" as P3 <<process>> #FBD38D
+rectangle "P4 — Intégration Dolibarr\n(manuel + post-login)" as P4 <<process>> #FED7D7
+rectangle "P5 — Suggestions IA" as P5 <<process>> #E9D8FD
+rectangle "P6 — Historique & exports" as P6 <<process>> #B2F5EA
+
+database "D1 — référentiels\nusers, types, féries…" as D1 <<storage>>
+database "D2 — demandes_conge" as D2 <<storage>>
+database "D3 — history,\ndolibarr_sync_logs" as D3 <<storage>>
+
+cloud "Dolibarr" as EXT
+
+E --> P1 : login
+E --> P2 : CRUD demandes
+E --> P5 : suggestions
+
+G --> P1
+G --> P3 : décisions & stats
+G --> P4 : sync API
+
+P1 --> D1
+P1 --> EXT
+P1 ..> P4 : afterCommit → async
+
+P2 <--> D2
+P3 <--> D2
+P3 --> D1
+
+P4 <--> EXT
+P4 --> D1
+P4 --> D2
+P4 --> D3
+
+P5 <--> D2
+P5 --> D1
+
+P6 <--> D3
+P2 ..> P6 : événements
+P3 ..> P6 : décisions
+
+@enduml

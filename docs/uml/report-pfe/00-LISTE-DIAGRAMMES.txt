@@ -1,0 +1,43 @@
+Rapport PFE — jeu complet de diagrammes PlantUML
+===============================================
+
+Emplacement : pfe-frontend-main/docs/uml/report-pfe/
+
+Acteurs (convention rapport) :
+  • Employé — individu
+  • GRH — groupe des responsables RH (acteur organisationnel ; un membre incarne les séquences)
+
+Fichiers (27 diagrammes + cette liste) :
+
+  00-LISTE-DIAGRAMMES.txt
+  01-dcu-global.puml
+  02-dcu-sprint1.puml
+  03-dcu-sprint2.puml
+  04-dcu-sprint3.puml
+  05-dcu-sprint4.puml
+  06-dcu-sprint5.puml
+  07-seq-authentification.puml
+  08-seq-jwt-filter.puml
+  09-seq-creation-demande.puml
+  10-seq-decision-grh.puml
+  11-seq-sync-dolibarr-api.puml
+  12-seq-suggestions-ia.puml
+  13-class-couche-auth.puml
+  14-class-domaine-demandes.puml
+  15-class-integration.puml
+  16-activite-creation-demande.puml
+  17-activite-decision-grh.puml
+  18-etat-statut-demande.puml
+  19-composants-logiciels.puml
+  20-deploiement-docker.puml
+  21-packages-backend.puml
+  22-architecture-conteneurs.puml
+  23-dfd-niveau0.puml
+  24-dfd-niveau1.puml
+  25-processus-validation-bpmn.puml
+  26-erd-synthese.puml
+  27-gantt-sprints.puml
+
+Rendu : extension PlantUML dans VS Code / Cursor, ou https://www.plantuml.com/plantuml, ou java -jar plantuml.jar *.puml
+
+Alignement code : synchro Dolibarr post-login (AuthService + DolibarrBackgroundSyncFacade @Async taskExecutor), JWT, endpoints /api/*, profil dev /api/dolibarr/** documenté en note où pertinent.

@@ -1,0 +1,26 @@
+@startuml PFE_12_SEQ_AI
+!theme cerulean-outline
+title Séquence — Suggestions intelligentes de dates\n(AIService — acteur : Employé)
+
+actor "Employé" as EMP
+participant "UI employé" as FE
+participant "AIController\nGET /api/ai/suggest-dates" as AI
+participant "AIService" as AIS
+database "DemandeCongeRepository" as DEM
+database "HolidayRepository" as HOL
+
+EMP -> FE : critères (durée, fenêtre…)
+FE -> AI : GET suggest-dates + JWT
+
+AI -> AIS : suggestOptimalDates(userId, …)
+
+AIS -> DEM : périodes indisponibles\n(demandes EN_ATTENTE / ACCEPTE)
+AIS -> HOL : jours fériés
+
+AIS -> AIS : heuristique + score\n(DateRangeFitness)
+
+AIS --> AI : List<DateSuggestionDto>
+AI --> FE : JSON suggestions
+FE --> EMP : affichage
+
+@enduml

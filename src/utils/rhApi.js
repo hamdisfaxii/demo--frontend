@@ -57,9 +57,13 @@ const mapMockToRequest = (row) => ({
   dateDebut: row.dateDebut,
   dateFin: row.dateFin,
   nombreJours: row.nombreJours,
+  nombreJoursExact: row.nombreJoursExact ?? row.joursExact ?? null,
+  startHalfDay: row.startHalfDay ?? null,
+  endHalfDay: row.endHalfDay ?? null,
   motif: row.raison ?? row.motif ?? "",
   commentaireRh: row.commentaireRh ?? "",
   dateSoumission: row.dateCreation ?? row.dateSoumission ?? null,
+  approuvePar: row.approuvePar ?? row.approvedBy ?? null,
   employe: {
     id: row.userId ?? row.employe?.id,
     nom: row.employe?.nom ?? row.employe?.fullName?.split(" ").slice(1).join(" ") ?? "",
@@ -274,7 +278,7 @@ export async function getHrRequestById(id) {
   try {
     const { data } = await api.get(`/hr/requests/${id}`);
     return mapMockToRequest(data);
-  } catch (e) {
+  } catch {
     const { data } = await api.get(`/demande/${id}`);
     return mapMockToRequest(data);
   }
@@ -306,6 +310,13 @@ export async function decideHrRequest(id, action, comment) {
     commentaire: comment || "",
   });
   return data;
+}
+
+export async function getSuperAdmins() {
+  // Mode mock (Node backend) : endpoint Spring Boot non disponible.
+  if (isMockSession()) return [];
+  const { data } = await api.get("/hr/admins");
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getCalendarEvents(filters = {}) {

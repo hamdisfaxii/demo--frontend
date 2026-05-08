@@ -1,0 +1,27 @@
+@startuml PFE_04_DCU_Sprint3
+!theme cerulean-outline
+title Cas d'utilisation — Sprint 3\nPilotage par le GRH (groupe RH)
+
+left to right direction
+
+actor "GRH\n(groupe RH)" as GRH
+
+rectangle "Sprint 3" {
+  usecase (Tableau de bord\nGET /api/rh/dashboard) as R1
+  usecase (Liste & détail demandes\nHrDecisionController\n/api/rh/requests …) as R2
+  usecase (Décision valider / rejeter\nPOST …/{id}/decision) as R3
+  usecase (Workflow multi-niveaux\n/api/workflow/*) as R4
+  usecase (Historique applicatif\n& exports PDF/Excel\n/api/history/*) as R5
+}
+
+GRH --> R1
+GRH --> R2
+GRH --> R3
+GRH --> R4
+GRH --> R5
+
+note bottom of GRH
+Un **membre** du GRH réalise l'interaction ;\nle cas d'utilisation est porté par l'**équipe**.
+end note
+
+@enduml

@@ -109,14 +109,6 @@ function employeeOverviewFromEvents(events, year, countryIso, employeeId) {
   };
 }
 
-export function eventDisplayLine(event, code) {
-  if (event.eventType === "HOLIDAY") {
-    const t = event.title || "Jour férié";
-    return `${code} — ${t}`;
-  }
-  return event.title || `${event.employeeName || "Employé"} — ${event.leaveType || "Congé"}`;
-}
-
 /**
  * @param {{ variant?: 'rh' | 'employee', employeeId?: number, employeeCountryIso?: string, topSlot?: React.ReactNode }} props
  */
@@ -146,6 +138,14 @@ export default function GlobalWorkCalendar({
       return normalizeCountryIsoForHr(ev.country) === countryFilter;
     });
   }, [events, countryFilter, isEmployee]);
+
+  const eventDisplayLine = (event, code) => {
+    if (event.eventType === "HOLIDAY") {
+      const t = event.title || "Jour férié";
+      return `${code} — ${t}`;
+    }
+    return event.title || `${event.employeeName || "Employé"} — ${event.leaveType || "Congé"}`;
+  };
 
   const rhEventBarClass = (event) =>
     `rounded px-1.5 py-0.5 text-[10px] leading-tight truncate shadow-sm cursor-pointer hover:brightness-105 ${calendarEventClassesForCountry(event.country)}`;

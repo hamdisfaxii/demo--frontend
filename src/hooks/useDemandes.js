@@ -527,8 +527,10 @@ export default function useDemandes() {
           ? data?.heureArrivee ?? null
           : data?.heureDebut ?? null,
         heureFin: data?.heureFin ?? null,
+        startHalfDay: data?.startHalfDay ?? null,
+        endHalfDay: data?.endHalfDay ?? null,
         demandeSortieCourte: Boolean(isSortie),
-        motif: commentaire,
+        approvedByAdminId: data?.approvedByAdminId ?? data?.approuveParId ?? null,
       };
 
       // Primary path: Spring backend endpoint.
@@ -555,7 +557,11 @@ export default function useDemandes() {
           throw fallbackError;
         }
       }
-      setError(e?.response?.data?.error || "Impossible de créer la demande.");
+      const msg =
+        e?.response?.data?.message ??
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === "string" ? e.response.data : null);
+      setError(msg || "Impossible de créer la demande.");
       throw e;
     } finally {
       setLoading(false);

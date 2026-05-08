@@ -1,0 +1,31 @@
+@startuml PFE_16_Activite_CreationDemande
+!theme cerulean-outline
+title Diagramme d'activité — Création d'une demande\n(acteur : Employé)
+
+start
+
+:Charger UserEntity\n(principal JWT);
+
+if (dateFin >= dateDebut ?) then (non)
+  stop
+endif
+
+if (Chevauchement avec demandes\nEN_ATTENTE ou ACCEPTE ?) then (oui)
+  stop
+endif
+
+:Règles TypeConge / pays\n(COURTE_DUREE, France, hors France);
+
+if (Validations agenda,\ncaps horaires, soldes RTT…) then (non)
+  stop
+endif
+
+:Construire DemandeConge;
+
+:Persister — @PrePersist\nrecalcul nombreJours /\n nombreJoursExact;
+
+:Workflow / notifications\nselon configuration;
+
+stop
+
+@enduml

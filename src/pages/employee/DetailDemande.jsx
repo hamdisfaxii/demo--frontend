@@ -109,6 +109,19 @@ export default function DetailDemande() {
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Approuvé par
+                    </div>
+                    <div className="font-semibold text-slate-900 mt-1">
+                      {(() => {
+                        const ap = demandeDetail?.approuvePar ?? demandeDetail?.approvedBy ?? null;
+                        const nm = `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim();
+                        return nm || ap?.email || "--";
+                      })()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       Date début
                     </div>
                     <div className="font-semibold text-slate-900 mt-1">
@@ -134,11 +147,31 @@ export default function DetailDemande() {
                       Nombre de jours
                     </div>
                     <div className="font-semibold text-slate-900 mt-1">
-                      {demandeDetail?.nbJours ??
-                        demandeDetail?.nombreJours ??
-                        demandeDetail?.jours ??
-                        "--"}{" "}
-                      jours
+                      {(() => {
+                        const exact =
+                          demandeDetail?.nombreJoursExact ??
+                          demandeDetail?.joursExact ??
+                          null;
+                        const raw =
+                          demandeDetail?.nbJours ??
+                          demandeDetail?.nombreJours ??
+                          demandeDetail?.jours ??
+                          null;
+                        const n =
+                          typeof exact === "number"
+                            ? exact
+                            : typeof raw === "number"
+                              ? raw
+                              : Number(raw);
+                        const val = Number.isFinite(n) ? n : null;
+                        const sh = String(demandeDetail?.startHalfDay ?? "").toUpperCase();
+                        const eh = String(demandeDetail?.endHalfDay ?? "").toUpperCase();
+                        const labelHalf = (h) =>
+                          h === "MORNING" ? "Matin" : h === "AFTERNOON" ? "Après-midi" : "";
+                        const halfInfo =
+                          sh || eh ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})` : "";
+                        return val == null ? "--" : `${val} jour(s)${halfInfo}`;
+                      })()}
                     </div>
                   </div>
 

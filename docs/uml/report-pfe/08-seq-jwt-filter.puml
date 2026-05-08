@@ -1,0 +1,35 @@
+@startuml PFE_08_SEQ_JWT
+!theme cerulean-outline
+title Séquence — Requête HTTP authentifiée\n(JwtAuthFilter)
+
+actor "Client\n(Employé ou GRH)" as C
+participant "axios\n(api.js + Bearer)" as FE
+participant "JwtAuthFilter" as JF
+participant "JwtService" as JWT
+database "UserRepository\nMySQL" as DB
+participant "Controller REST" as CTL
+
+C -> FE : action métier
+FE -> CTL : Authorization: Bearer <token>
+
+activate JF
+JF -> JWT : validateToken(token)\ngetEmailFromToken
+alt token invalide ou expiré
+  JWT --> JF : invalide
+  JF -> CTL : chaîne sans principal\n(souvent 401)
+else token valide
+  JWT --> JF : email
+  JF -> DB : findByEmail(email)
+  DB --> JF : UserEntity
+  JF -> JF : SecurityContextHolder\nprincipal = UserEntity\nauthority = role.getValue()
+  JF -> CTL : filterChain.doFilter
+end
+deactivate JF
+
+CTL --> FE : JSON réponse
+
+note bottom of FE
+401 hors POST login : purge token\nlocalStorage + événement auth:logout
+end note
+
+@enduml

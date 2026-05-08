@@ -1,0 +1,80 @@
+@startuml Use_Case_Diagram_Leave_System
+!theme plain
+title Diagramme de cas d'utilisation — gestion des congés (BPM)\n**(système externe Dolibarr)**
+
+left to right direction
+
+actor "Employé" as E
+actor "Responsable RH" as R
+
+actor "Dolibarr\n(ERP externe)" as DOL <<external>>
+
+rectangle "Système" {
+
+  usecase "Gérer ses demandes\nde congé" as UC_G_EMP
+
+  usecase "Passer une demande" as UC_PASS
+  usecase "Consulter l'état\ndes demandes" as UC_ETAT
+  usecase "Annuler une demande" as UC_ANN
+
+  UC_G_EMP <|-- UC_PASS
+  UC_G_EMP <|-- UC_ETAT
+  UC_G_EMP <|-- UC_ANN
+
+  usecase "Gérer les demandes\ndes employés" as UC_G_RH
+
+  usecase "Consulter" as UC_VOIR
+  usecase "Valider" as UC_VAL
+  usecase "Refuser" as UC_REF
+
+  UC_G_RH <|-- UC_VOIR
+  UC_G_RH <|-- UC_VAL
+  UC_G_RH <|-- UC_REF
+
+  usecase "S'authentifier" as UC_AUTH
+  usecase "Réinitialiser\nle mot de passe" as UC_PWD
+
+  usecase "Enregistrer la demande\nchez Dolibarr" as UC_DOL_PUSH
+  usecase "Mettre à jour les soldes\n(Dolibarr, congé accepté)" as UC_DOL_UPD
+
+  UC_G_EMP ..> UC_AUTH : <<include>>
+  UC_G_RH  ..> UC_AUTH : <<include>>
+
+  UC_PWD ..> UC_AUTH : <<extend>>
+
+  UC_PASS ..> UC_DOL_PUSH : <<include>>
+  UC_DOL_UPD ..> UC_VAL : <<extend>>
+}
+
+E --> UC_G_EMP
+R --> UC_G_RH
+
+DOL --> UC_AUTH : valider identifiants\n(vue **AuthService**)
+DOL --> UC_DOL_PUSH : **POST** demande\n(pushLeaveRequest)
+DOL --> UC_DOL_UPD : alignement soldes\n(syncApprovedLeave)
+
+note bottom of DOL
+  **Acteur secondaire** : le **Système** invoque les API
+  Dolibarr ; Dolibarr n'est pas un utilisateur humain.
+  Si l'ERP est désactivé, les cas **DolPush / DolUpd**
+  ne font aucun appel réseau (implémentation).
+end note
+
+note right of UC_DOL_PUSH
+  **<<include>>** après création locale de la demande.
+end note
+
+note right of UC_DOL_UPD
+  **<<extend>>** : seulement si la décision
+  mène à un congé **accepté**.
+end note
+
+note right of UC_AUTH
+  **<<include>>** sur « Gérer… » : session obligatoire.
+end note
+
+note bottom of UC_PWD
+  **<<extend>>** : évolution / délégation ERP.
+end note
+
+@enduml

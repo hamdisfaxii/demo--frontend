@@ -1,0 +1,31 @@
+@startuml PFE_21_Packages_Backend
+!theme cerulean-outline
+title Diagramme de packages — Backend `com.example.conges`
+
+package com.example.conges {
+  package controller <<Folder>>
+  package service <<Folder>>
+  package service.export <<Folder>>
+  package repository <<Folder>>
+  package entity <<Folder>>
+  package dto <<Folder>>
+  package dto.hr <<Folder>>
+  package dto.ai <<Folder>>
+  package dto.dolibarr <<Folder>>
+  package config <<Folder>>
+  package scheduler <<Folder>>
+  package mapper <<Folder>>
+
+  controller --> service
+  controller --> dto
+  service --> repository
+  service --> entity
+  repository --> entity
+  service --> dto
+}
+
+note bottom of dto
+DTO : contrats REST découplés\ndes entités JPA
+end note
+
+@enduml

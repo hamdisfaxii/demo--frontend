@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 export default function FiltresDemandes({
   years = [],
@@ -19,18 +19,6 @@ export default function FiltresDemandes({
 
   const [annee, setAnnee] = useState(String(anneeParDefaut));
   const [statut, setStatut] = useState(initialStatut);
-
-  useEffect(() => {
-    if (initialStatut != null && initialStatut !== undefined) {
-      setStatut(initialStatut);
-    }
-  }, [initialStatut]);
-
-  useEffect(() => {
-    if (initialAnnee != null && initialAnnee !== undefined && String(initialAnnee).trim() !== "") {
-      setAnnee(String(initialAnnee));
-    }
-  }, [initialAnnee]);
 
   const handleSearch = () => {
     if (typeof onSearch === "function") {

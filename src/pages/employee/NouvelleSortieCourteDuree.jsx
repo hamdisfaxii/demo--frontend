@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import { useAuth } from "../../context/authcontext";
 import { isFranceSortieCourteEligible } from "../../utils/country";
+import { getSuperAdmins } from "../../utils/rhApi";
 
 const NON_FR_CAP = 2;
 const FIXED_MINUTES = 120;
@@ -35,12 +36,16 @@ export default function NouvelleSortieCourteDuree() {
   const { loading, error, fetchSolde, soldeSummary, creerDemande } = useDemandes();
 
   const fr = isFranceSortieCourteEligible(user?.country);
+  const [frMode, setFrMode] = useState("RTT"); // "RTT" | "2H"
 
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [heureDebut, setHeureDebut] = useState("");
   const [heureFin, setHeureFin] = useState("");
+  const [periodeFr, setPeriodeFr] = useState(""); // "", MORNING, AFTERNOON
   const [motif, setMotif] = useState("");
+  const [approvedByAdminId, setApprovedByAdminId] = useState("");
+  const [admins, setAdmins] = useState([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,10 +73,16 @@ export default function NouvelleSortieCourteDuree() {
   }, [fetchSolde]);
 
   useEffect(() => {
-    if (!fr && heureDebut) {
+    getSuperAdmins()
+      .then((rows) => setAdmins(Array.isArray(rows) ? rows : []))
+      .catch(() => setAdmins([]));
+  }, []);
+
+  useEffect(() => {
+    if ((!fr || frMode === "2H") && heureDebut) {
       setHeureFin(addMinutesToTimeString(heureDebut, FIXED_MINUTES));
     }
-  }, [fr, heureDebut]);
+  }, [fr, frMode, heureDebut]);
 
   if (authLoading) {
     return (
@@ -117,14 +128,25 @@ export default function NouvelleSortieCourteDuree() {
       }
     }
 
-    if (!heureDebut) {
-      setFormError("Veuillez renseigner l'heure de début.");
-      return;
+    if (!fr) {
+      if (!heureDebut) {
+        setFormError("Veuillez renseigner l'heure de début.");
+        return;
+      }
+      if (!heureFin) {
+        setFormError("Veuillez renseigner l'heure de fin.");
+        return;
+      }
     }
-
-    if (!heureFin) {
-      setFormError("Veuillez renseigner l'heure de fin.");
-      return;
+    if (fr && frMode === "2H") {
+      if (!heureDebut) {
+        setFormError("Veuillez renseigner l'heure de début.");
+        return;
+      }
+      if (!heureFin) {
+        setFormError("Veuillez renseigner l'heure de fin.");
+        return;
+      }
     }
 
     if (!motif.trim()) {
@@ -132,7 +154,12 @@ export default function NouvelleSortieCourteDuree() {
       return;
     }
 
-    if (!fr) {
+    if (admins.length > 0 && !approvedByAdminId) {
+      setFormError("Veuillez sélectionner « Approuvé par ».");
+      return;
+    }
+
+    if (!fr || (fr && frMode === "2H")) {
       const capRest = typeof restantes === "number" ? restantes : maxMois;
       if (capRest <= 0) {
         setFormError("Limite mensuelle de 2 autorisations courtes (2 h) atteinte.");
@@ -141,7 +168,7 @@ export default function NouvelleSortieCourteDuree() {
       const md = minutesDelta(heureDebut, heureFin);
       if (md !== FIXED_MINUTES) {
         setFormError(
-          "La durée doit être exactement 2 heures (autorisations hors France).",
+          "La durée doit être exactement 2 heures.",
         );
         return;
       }
@@ -154,9 +181,12 @@ export default function NouvelleSortieCourteDuree() {
         dateSortie: dDeb,
         dateDebut: dDeb,
         dateFin: dFin,
-        heureDebut,
-        heureFin,
+        heureDebut: fr ? (frMode === "2H" ? heureDebut : null) : heureDebut,
+        heureFin: fr ? (frMode === "2H" ? heureFin : null) : heureFin,
         motif: motif.trim(),
+        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
+        startHalfDay: fr && frMode === "RTT" && periodeFr ? periodeFr : undefined,
+        endHalfDay: fr && frMode === "RTT" && periodeFr ? periodeFr : undefined,
       });
       navigate("/employee/historique");
     } catch (err) {
@@ -186,12 +216,12 @@ export default function NouvelleSortieCourteDuree() {
         </div>
 
         <h1 className="text-4xl font-bold text-slate-900">
-          {fr ? "Sortie courte durée (France — RTT)" : "Autorisation courte (2 h)"}
+          {fr ? "Sortie courte durée (France)" : "Autorisation courte (2 h)"}
         </h1>
 
         <p className="mt-3 text-slate-600">
           {fr
-            ? "RTT journée, demi-journée ou plage horaire : la durée en jours ouvrés est calculée côté serveur à partir des dates et décomptée de votre solde RTT."
+            ? "Choisissez « RTT » (jour/demi‑journée) ou « Autorisation 2 h » (comme TN/MA)."
             : `Jusqu’à ${maxMois} autorisations de 2 h par mois calendaire (créées ou en attente). La ${maxMois + 1}ᵉ est refusée.`}
         </p>
 
@@ -205,13 +235,19 @@ export default function NouvelleSortieCourteDuree() {
               fr ? "text-violet-900" : "text-amber-900"
             }`}
           >
-            {fr ? "Solde RTT / sortie courte (jours)" : "Autorisations 2 h ce mois-ci"}
+            {fr ? "Solde / compteur" : "Autorisations 2 h ce mois-ci"}
           </div>
           <div
             className={`mt-1 text-xl font-bold ${fr ? "text-violet-950" : "text-amber-950"}`}
           >
             {fr ? (
-              <>{soldeSummary ? `${soldeSummary.permission} jour(s)` : "—"}</>
+              <>
+                {soldeSummary
+                  ? `${soldeSummary.permission} jour(s) RTT — ${
+                      typeof restantes === "number" ? `${restantes} autorisation(s) 2 h restante(s)` : "—"
+                    }`
+                  : "—"}
+              </>
             ) : (
               <>
                 {typeof utilisees === "number" && typeof restantes === "number" ? (
@@ -246,6 +282,29 @@ export default function NouvelleSortieCourteDuree() {
           className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 fade-in-up"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="sm:col-span-2">
+              <label className="text-sm font-semibold text-slate-700 block mb-2">
+                Approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                value={approvedByAdminId}
+                onChange={(e) => setApprovedByAdminId(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">
+                  {admins.length > 0 ? "Sélectionner un Super Admin" : "Super Admins indisponibles (mode compat)"}
+                </option>
+                {admins.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Ce champ est requis si la liste des Super Admins est disponible.
+              </p>
+            </div>
+
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
                 {fr ? "Date début" : "Date"} <span className="text-red-500">*</span>
@@ -280,39 +339,122 @@ export default function NouvelleSortieCourteDuree() {
               </div>
             ) : null}
 
-            <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Heure début <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={heureDebut}
-                onChange={(e) => setHeureDebut(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                required
-              />
-            </div>
+            {fr ? (
+              <>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Type de demande
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFrMode("RTT")}
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-all ${
+                        frMode === "RTT"
+                          ? "border-violet-600 bg-violet-600 text-white"
+                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      RTT (jour / demi‑journée)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFrMode("2H")}
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-all ${
+                        frMode === "2H"
+                          ? "border-amber-600 bg-amber-600 text-white"
+                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      Autorisation 2 h
+                    </button>
+                  </div>
+                </div>
 
-            <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Heure fin <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={heureFin}
-                readOnly={!fr}
-                onChange={(e) => fr && setHeureFin(e.target.value)}
-                className={`w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                  !fr ? "bg-slate-50 text-slate-700" : ""
-                }`}
-                required
-              />
-              {!fr ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  Calculée automatiquement : début + 2 h (règle métier).
-                </p>
-              ) : null}
-            </div>
+                {frMode === "RTT" ? (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-semibold text-slate-700 block mb-2">
+                      Période RTT
+                    </label>
+                    <select
+                      value={periodeFr}
+                      onChange={(e) => setPeriodeFr(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="">Journée complète</option>
+                      <option value="MORNING">Matin (0.5)</option>
+                      <option value="AFTERNOON">Après-midi (0.5)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 block mb-2">
+                        Heure début <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={heureDebut}
+                        onChange={(e) => setHeureDebut(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 block mb-2">
+                        Heure fin <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={heureFin}
+                        readOnly
+                        className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        required
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Calculée automatiquement : début + 2 h (règle métier).
+                      </p>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Heure début <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={heureDebut}
+                    onChange={(e) => setHeureDebut(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Heure fin <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={heureFin}
+                    readOnly={!fr}
+                    onChange={(e) => fr && setHeureFin(e.target.value)}
+                    className={`w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      !fr ? "bg-slate-50 text-slate-700" : ""
+                    }`}
+                    required
+                  />
+                  {!fr ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Calculée automatiquement : début + 2 h (règle métier).
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            )}
 
             <div className="sm:col-span-2">
               <label className="text-sm font-semibold text-slate-700 block mb-2">

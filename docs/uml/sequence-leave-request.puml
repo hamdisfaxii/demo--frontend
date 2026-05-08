@@ -1,0 +1,63 @@
+@startuml Sequence_Leave_Request
+!theme plain
+title Diagramme de séquence — **demande de congé** (création + décision BPM)\nSpring Boot : `CongeService`, `WorkflowService`
+
+autonumber
+
+actor "Employé" as Emp
+participant "Client React" as SPA
+participant "**POST /api/conge**\nCongeController" as CC
+participant "CongeService" as CS
+participant "WorkflowService" as WF
+database "Repository\nDemandeConge" as REPO
+participant "DolibarrService\n(facultatif)" as DOL
+participant "HistoryService" as HIST
+
+== Soumission d'une demande ==
+Emp -> SPA : Passer une demande\n(saisie, validation locale)
+SPA -> CC : **POST /api/conge**\n`DemandeCongeRequest` + JWT
+CC -> CS : creerDemande(userId, request)
+
+CS -> CS : contrôles solde, jours ouvrables,\nrègles pays (RTT, courte durée…)
+CS -> WF : initializeWorkflow(demande)
+activate WF
+WF -> WF : résoudre `WorkflowDefinition`\n+ étapes applicables
+WF --> CS : étape courante, statut EN_ATTENTE
+deactivate WF
+
+CS -> REPO : **save** (demande)
+CS -> DOL : **pushLeaveRequest** (si ERP configuré)
+DOL --> CS : id distant ou null
+
+CS -> HIST : trace création / sync
+CS --> CC : `DemandeCongeResponse` **201**
+CC --> SPA : afficher confirmation
+
+== Décision (Validateur — étape BPM) ==
+actor "Responsable RH\n(ou rôle autorisé)" as RH
+participant "**PUT /api/demandes/{id}/valider**\nou **POST /hr/requests/{id}/decision**" as ENTRY
+
+RH -> SPA : Valider / Refuser
+SPA -> ENTRY : requête + JWT\n(corps accepte / action, commentaire)
+ENTRY -> CS : validerDemande(…)
+
+CS -> WF : **processDecision**(demandeId, actor, approuvé, commentaire)
+activate WF
+WF -> REPO : enregistrer **DemandeApproval**\n+ mise à jour demande\n(étape suivante ou statut final)
+WF --> CS : DemandeConge à jour
+deactivate WF
+
+opt Statut final **ACCEPTE**
+  CS -> DOL : syncApprovedLeave
+end
+CS -> HIST : approbation / rejet
+CS -> CS : e-mail employé\n(NotificationService si configuré)
+CS --> ENTRY : **200** + corps JSON
+ENTRY --> SPA
+
+note across
+  Les annotations **@PreAuthorize** diffèrent selon l'endpoint\n
+  (`HrDecisionController` vs `DemandeController` vs `CongeController`).
+end note
+
+@enduml

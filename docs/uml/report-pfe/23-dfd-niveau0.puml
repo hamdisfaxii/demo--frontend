@@ -1,0 +1,19 @@
+@startuml PFE_23_DFD_Niveau0
+!theme cerulean-outline
+title Diagramme de flux de données — Niveau 0 (contexte)
+
+rectangle "Employé" as E
+rectangle "GRH\n(groupe des responsables RH)" as G
+
+rectangle "Processus central\nGestion des congés\n(Spring Boot)" as P0 <<process>> #E6FFFA
+
+database "Stockage\nMySQL" as D <<storage>> #FEFCBF
+rectangle "Système externe\nDolibarr" as X
+
+E <--> P0 : demandes, soldes,\nconsultations
+G <--> P0 : validations, config,\nsynchronisations, rapports
+
+P0 <--> D : persistance
+P0 <--> X : identité & données RH
+
+@enduml

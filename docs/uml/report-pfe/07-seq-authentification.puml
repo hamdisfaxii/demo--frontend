@@ -1,0 +1,55 @@
+@startuml PFE_07_SEQ_Auth
+!theme cerulean-outline
+skinparam sequenceMessageAlign center
+
+title Séquence — Authentification JWT\n(Employé ou membre du GRH)
+
+actor "Employé /\nmembre du GRH" as U
+participant "SPA React" as FE
+participant "AuthController\nPOST /api/auth/login" as AC
+participant "AuthService" as AS
+participant "DolibarrService" as DS
+database "ERP Dolibarr" as DERP
+participant "JwtService" as JWT
+database "MySQL\n(table users)" as DB
+participant "TransactionSynchronization\nafterCommit" as TX
+participant "DolibarrBackgroundSyncFacade\n@Async(taskExecutor)" as BGF
+participant "DolibarrSyncService" as SYNC
+database "MySQL\n(référentiels)" as LOC
+
+U -> FE : email / mot de passe
+FE -> AC : POST /api/auth/login
+AC -> AS : login(LoginRequest)
+
+AS -> DS : authenticateUserViaApi(email, password)
+DS -> DERP : API authentification
+DERP --> DS : DolibarrEmployeeDto
+
+AS -> AS : handleDolibarrLogin\n(upsert UserEntity, Role)
+AS -> DB : save(user)
+AS -> JWT : generateToken(user)
+AS -> AS : scheduleFullDolibarrSyncAfterCommitIfConfigured()
+
+opt Dolibarr non configuré
+  AS --> AC : AuthResponse { token, user }
+else configuré
+  AS -> TX : registerSynchronization(afterCommit)
+  AS --> AC : AuthResponse { token, user }
+end
+
+AC --> FE : 200 OK
+
+... après commit transaction ...
+
+TX -> BGF : triggerFullSyncAfterLogin()
+activate BGF
+BGF -> SYNC : syncAllDataFromDolibarr()
+SYNC <-> DERP : REST / fallback JDBC
+SYNC -> LOC : employés, types, féries, allocations
+deactivate BGF
+
+note right of FE
+Réponse HTTP **avant** la fin de la synchro async.\nProfil **dev** : /api/dolibarr/** peut être sans JWT\n(SecurityConfig — ne pas reproduire en prod).
+end note
+
+@enduml

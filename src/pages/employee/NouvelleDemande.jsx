@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
 import { calculerJoursOuvres } from "../../utils/calculJours";
 import { useAuth } from "../../context/authcontext";
-import { isFranceSortieCourteEligible } from "../../utils/country";
+import { getSuperAdmins } from "../../utils/rhApi";
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
@@ -20,14 +20,24 @@ export default function NouvelleDemande() {
 
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
+  const [startHalfDay, setStartHalfDay] = useState("");
+  const [endHalfDay, setEndHalfDay] = useState("");
   const [titre, setTitre] = useState("Congé payé");
   const [commentaire, setCommentaire] = useState("");
+  const [approvedByAdminId, setApprovedByAdminId] = useState("");
+  const [admins, setAdmins] = useState([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchSolde().catch(() => {});
   }, [fetchSolde]);
+
+  useEffect(() => {
+    getSuperAdmins()
+      .then((rows) => setAdmins(Array.isArray(rows) ? rows : []))
+      .catch(() => setAdmins([]));
+  }, []);
 
   const nbJours = useMemo(() => {
     if (!dateDebut || !dateFin) return 0;
@@ -38,28 +48,23 @@ export default function NouvelleDemande() {
     return calculerJoursOuvres(dateDebut, dateFin, user?.country || "");
   }, [dateDebut, dateFin, user?.country]);
 
-  const titreInfo = useMemo(() => {
-    const t = String(titre || "").toLowerCase();
-    if (t.includes("maladie")) {
-      return {
-        variant: "maladie",
-        text: "Congé maladie : vérifiez le solde « maladie » sur votre tableau de bord ; il est distinct des congés payés ci-dessus.",
-      };
+  const nbJoursExact = useMemo(() => {
+    if (!dateDebut || !dateFin) return 0;
+    const base = nbJours;
+    if (base <= 0) return 0;
+    const sameDay = String(dateDebut) === String(dateFin);
+    if (sameDay) {
+      const s = startHalfDay || "MORNING";
+      const e = endHalfDay || "AFTERNOON";
+      if (s === "AFTERNOON" && e === "MORNING") return 0;
+      if (s === e) return 0.5;
+      return 1;
     }
-    if (t.includes("sans solde")) {
-      return {
-        variant: "sans",
-        text: "Congé sans solde : aucune vérification sur vos congés payés.",
-      };
-    }
-    if (t.includes("payé")) {
-      return {
-        variant: "paye",
-        text: "Seul ce type vérifie le bandeau « congés payés » avant envoi.",
-      };
-    }
-    return null;
-  }, [titre]);
+    let exact = base;
+    if (startHalfDay) exact -= 0.5;
+    if (endHalfDay) exact -= 0.5;
+    return Math.max(0, exact);
+  }, [dateDebut, dateFin, endHalfDay, nbJours, startHalfDay]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,13 +82,18 @@ export default function NouvelleDemande() {
       return;
     }
 
-    if (nbJours <= 0) {
+    if (nbJoursExact <= 0) {
       setFormError("Le nombre de jours doit être supérieur à 0.");
       return;
     }
 
     if (!titre) {
       setFormError("Veuillez sélectionner le type de congé.");
+      return;
+    }
+
+    if (admins.length > 0 && !approvedByAdminId) {
+      setFormError("Veuillez sélectionner « Approuvé par ».");
       return;
     }
 
@@ -94,7 +104,7 @@ export default function NouvelleDemande() {
     if (
       doitVerifierSoldePaye &&
       typeof soldeCongesPayes === "number" &&
-      nbJours > soldeCongesPayes
+      nbJoursExact > soldeCongesPayes
     ) {
       setFormError("Vous n'avez pas assez de jours de congés payés disponibles.");
       return;
@@ -116,12 +126,15 @@ export default function NouvelleDemande() {
         dateFin,
         titre,
         commentaire: commentaire || undefined,
+        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
+        startHalfDay: startHalfDay || undefined,
+        endHalfDay: endHalfDay || undefined,
       });
       navigate("/employee/historique");
     } catch (err) {
       const apiMsg =
-        err?.response?.data?.error ??
         err?.response?.data?.message ??
+        err?.response?.data?.error ??
         (typeof err?.message === "string" ? err.message : null);
       setFormError(apiMsg || error || "Erreur lors de l'ajout de la demande.");
     } finally {
@@ -129,183 +142,206 @@ export default function NouvelleDemande() {
     }
   };
 
+  const fld =
+    "w-full border border-slate-200 rounded-md px-2.5 py-1.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
+  const lbl = "text-xs font-semibold text-slate-700 block mb-1";
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <div className="mb-8">
+      <div className="max-w-2xl mx-auto px-4 py-5 sm:px-5 sm:py-6">
+        <div className="mb-4">
           <button
             type="button"
             onClick={() => navigate("/employee/dashboard")}
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-all"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-all"
           >
             &lt; Retour
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-slate-900">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
           Nouvelle demande de congé
         </h1>
 
-        <div className="mt-6">
-          <div className="bg-blue-100 rounded-xl border border-blue-200 p-5 fade-in-up">
-            <div className="text-sm font-semibold text-blue-900 uppercase tracking-wide">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-md ring-1 ring-slate-900/5 fade-in-up">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            Utilisateur
+          </div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-base font-semibold text-slate-900">
+              {[user?.prenom, user?.nom].filter(Boolean).join(" ").trim() || user?.email || "—"}
+            </span>
+            {user?.email ? (
+              <span className="text-xs text-slate-500 truncate max-w-full">{user.email}</span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 fade-in-up">
+            <div className="text-[10px] font-semibold text-blue-900 uppercase tracking-wide">
               Solde disponible
             </div>
-            <div className="mt-2 text-2xl font-bold text-blue-900">
+            <div className="mt-0.5 text-lg font-bold text-blue-900 tabular-nums">
               {typeof soldeCongesPayes === "number"
                 ? `${soldeCongesPayes} jours`
                 : "—"}
-              <span className="block text-sm font-semibold text-blue-800/90 mt-2">
-                (Congés payés uniquement — maladie / sans solde : pas le même quota)
-              </span>
-              {isFranceSortieCourteEligible(user?.country) &&
-              soldeSummary &&
-              typeof soldeSummary.permission === "number" ? (
-                <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
-                  RTT / sorties courtes (France) : environ{" "}
-                  <strong>{soldeSummary.permission} jour(s)</strong> — uniquement depuis l’écran «
-                  Sortie courte durée » (menu employé).
-                </span>
-              ) : !isFranceSortieCourteEligible(user?.country) &&
-                soldeSummary &&
-                typeof soldeSummary.autorisationsCourtesMoisRestantes === "number" ? (
-                <span className="block text-xs text-blue-800/85 mt-2 leading-relaxed">
-                  Autorisations 2&nbsp;h (mois en cours) :{" "}
-                  <strong>{soldeSummary.autorisationsCourtesMoisRestantes}</strong> créneau(x) possible(s)
-                  sur {soldeSummary.autorisationsCourtesMoisMaximum ?? 2} — écran « Sortie courte
-                  durée ».
-                </span>
-              ) : null}
             </div>
           </div>
         </div>
 
         {(loading || submitting) && (
-          <div className="mt-4 text-sm font-medium text-slate-600">
+          <div className="mt-2 text-xs font-medium text-slate-600">
             Chargement...
           </div>
         )}
         {error && (
-          <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="text-red-500 mt-0.5">⚠️</div>
-              <div className="text-sm font-medium text-red-700">{error}</div>
+          <div className="mt-3 rounded-lg border-l-4 border-red-500 bg-red-50 p-3 shadow-sm">
+            <div className="flex items-start gap-2">
+              <div className="text-red-500 text-sm mt-0.5">⚠️</div>
+              <div className="text-xs font-medium text-red-700">{error}</div>
             </div>
           </div>
         )}
 
         <form
           onSubmit={handleSubmit}
-          className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 fade-in-up"
+          className="mt-5 bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-5 fade-in-up"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="sm:col-span-2">
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Titre du congé
+          <div className="flex flex-col gap-3.5">
+            <div>
+              <label className={lbl}>
+                Type
               </label>
               <select
                 value={titre}
                 onChange={(e) => setTitre(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className={fld}
                 required
               >
                 <option value="Congé payé">Congé payé</option>
                 <option value="Congé sans solde">Sans solde</option>
                 <option value="Congé maladie">Maladie</option>
               </select>
-              {titreInfo && (
-                <div
-                  className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-relaxed ${
-                    titreInfo.variant === "paye"
-                      ? "border-blue-200 bg-blue-50 text-blue-900"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
-                  }`}
-                >
-                  {titreInfo.text}
-                </div>
-              )}
             </div>
+
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
+              <label className={lbl}>
                 Date début
               </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+                <input
+                  type="date"
+                  value={dateDebut}
+                  onChange={(e) => setDateDebut(e.target.value)}
+                  className={`${fld} sm:flex-1 min-w-[9rem]`}
+                  required
+                />
+                <select
+                  value={startHalfDay}
+                  onChange={(e) => setStartHalfDay(e.target.value)}
+                  className={`${fld} sm:w-36 shrink-0`}
+                  aria-label="Période début (matin ou après-midi)"
+                >
+                  <option value="">Journée complète</option>
+                  <option value="MORNING">Matin</option>
+                  <option value="AFTERNOON">Après-midi</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={lbl}>
+                Date fin
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+                <input
+                  type="date"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  className={`${fld} sm:flex-1 min-w-[9rem]`}
+                  required
+                />
+                <select
+                  value={endHalfDay}
+                  onChange={(e) => setEndHalfDay(e.target.value)}
+                  className={`${fld} sm:w-36 shrink-0`}
+                  aria-label="Période fin (matin ou après-midi)"
+                >
+                  <option value="">Journée complète</option>
+                  <option value="MORNING">Matin</option>
+                  <option value="AFTERNOON">Après-midi</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={lbl}>
+                Nombre de jours (ouvrés)
+              </label>
               <input
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                required
+                type="text"
+                value={nbJours}
+                readOnly
+                className={`${fld} bg-slate-50 font-medium tabular-nums`}
               />
             </div>
 
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Date fin
+              <label className={lbl}>
+                Sera approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
               </label>
-              <input
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                required
-              />
+              <select
+                value={approvedByAdminId}
+                onChange={(e) => setApprovedByAdminId(e.target.value)}
+                className={fld}
+              >
+                <option value="">
+                  {admins.length > 0 ? "Sélectionner un validateur" : "Validateurs indisponibles (mode compat)"}
+                </option>
+                {admins.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Nombre de jours (ouvrés)
-              </label>
-              <div>
-                <input
-                  type="text"
-                  value={nbJours}
-                  readOnly
-                  className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-slate-50 text-slate-700 font-medium"
-                />
-              </div>
-              <p className="mt-2 text-xs text-slate-500">
-                Calcul automatique selon vos jours ouvrés (TN / FR / MA : week-ends exclus et jours fériés
-                nationaux selon votre pays RH ; sinon week-ends seulement si le pays n’est pas encore
-                défini).
-              </p>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Commentaire (optionnel)
+            <div>
+              <label className={lbl}>
+                Description
               </label>
               <textarea
                 value={commentaire}
                 onChange={(e) => setCommentaire(e.target.value)}
-                className="w-full min-h-[120px] resize-y border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Ajoutez un commentaire..."
+                className={`${fld} min-h-[96px] resize-y`}
               />
             </div>
           </div>
 
           {formError && (
-            <div className="mt-6 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="text-red-500 mt-0.5">⚠️</div>
-                <div className="text-sm font-medium text-red-700">
+            <div className="mt-4 rounded-lg border-l-4 border-red-500 bg-red-50 p-3 shadow-sm">
+              <div className="flex items-start gap-2">
+                <div className="text-red-500 text-sm mt-0.5">⚠️</div>
+                <div className="text-xs font-medium text-red-700">
                   {formError}
                 </div>
               </div>
             </div>
           )}
 
-          <div className="mt-8 flex gap-4 justify-end">
+          <div className="mt-5 flex gap-2 justify-end">
             <button
               type="button"
               onClick={() => navigate("/employee/dashboard")}
-              className="px-6 py-3 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-all"
+              className="px-4 py-2 rounded-md text-sm bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-all"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-md text-sm bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Ajouter
             </button>

@@ -1,0 +1,26 @@
+@startuml PFE_18_Etat_StatutDemande
+!theme cerulean-outline
+skinparam state {
+  BackgroundColor #EBF8FF
+}
+
+title Diagramme d'états — Cycle de vie d'une demande\n(enum StatutConge)
+
+[*] --> EN_ATTENTE : création employé
+
+state EN_ATTENTE {
+}
+
+EN_ATTENTE --> ACCEPTE : validation par le GRH\n(CongeService)
+EN_ATTENTE --> REFUSE : rejet par le GRH
+EN_ATTENTE --> ANNULE : annulation employé\n(ou règle métier)
+
+state ACCEPTE
+state REFUSE
+state ANNULE
+
+ACCEPTE --> [*]
+REFUSE --> [*]
+ANNULE --> [*]
+
+@enduml

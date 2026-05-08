@@ -1,0 +1,26 @@
+@startuml PFE_05_DCU_Sprint4
+!theme cerulean-outline
+title Cas d'utilisation — Sprint 4\nIntégration Dolibarr & cohérence
+
+left to right direction
+
+actor "GRH\n(groupe RH)" as GRH
+actor "Dolibarr" as Doli
+
+rectangle "Sprint 4" {
+  usecase (Synchroniser employés,\ntypes, jours fériés, allocations\nDolibarrSyncService) as I1
+  usecase (Déclencher via API\nPOST/GET /api/dolibarr/*) as I2
+  usecase (Même logique métier\nque synchro post-login async) as I3
+  usecase (Journaux d'intégration\ndolibarr_sync_logs + History) as I4
+  usecase (Gestion erreurs &\ncohérence métier\nCongeService) as I5
+}
+
+GRH --> I1
+GRH --> I2
+
+I1 ..> Doli
+I2 ..> Doli
+I3 ..> I1 : <<réutilise>>
+I1 ..> I4
+
+@enduml

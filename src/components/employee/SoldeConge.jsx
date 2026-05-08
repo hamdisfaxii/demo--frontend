@@ -1,10 +1,6 @@
 import React from "react";
 import { isFranceSortieCourteEligible } from "../../utils/country";
 
-/**
- * Affiche une synthèse des soldes (congés payés, sortie courte FR, maladie) si disponible ;
- * sinon le nombre unique `solde` (compat anciens backends).
- */
 function formatRttFranceJours(val) {
   if (val == null || !Number.isFinite(Number(val))) return "—";
   const n = Number(val);
@@ -20,8 +16,6 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
 
     const malNum = Number(maladie);
     const joursMal = Number.isFinite(malNum) ? Math.max(0, malNum) : 0;
-    /** Plus affiché ; identifiant conservé pour éviter une ReferenceError si HMR référence encore l’ancien code. */
-    const maladieSousTexte = null;
 
     const showShortLeaveCardFrance = showFranceSortieCourte;
     const shortNonFrMax = soldeSummary.autorisationsCourtesMoisMaximum;
@@ -70,9 +64,7 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                   RTT (France)
                 </div>
                 {franceRtt.contractSuspended ? (
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    Contrat suspendu : aucune prise RTT jusqu’à réactivation.
-                  </p>
+                  <p className="text-sm text-slate-600">Contrat suspendu</p>
                 ) : (
                   <>
                     <div className="grid grid-cols-3 gap-2 text-center sm:text-left sm:grid-cols-1">
@@ -104,38 +96,21 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-snug">
-                      Mode acquisition :{" "}
-                      <span className="font-semibold">{String(franceRtt.accrualMode ?? "")}</span>
-                      {Number.isFinite(Number(franceRtt.pending)) &&
-                      Number(franceRtt.pending) > 0 ? (
-                        <span>
-                          {" "}
-                          · {formatRttFranceJours(franceRtt.pending)} j. en demandes en attente
-                          (bloqués sur le disponible).
-                        </span>
-                      ) : null}
-                    </p>
                   </>
                 )}
               </div>
             ) : (
-              bloc(
-                "RTT / sortie courte",
-                Number(permission) || 0,
-                "France : soldes depuis le serveur (ancien affichage).",
-                "border-violet-600",
-              )
+              bloc("RTT / sortie courte", Number(permission) || 0, null, "border-violet-600")
             )
           ) : showShortLeaveCardIntl
               ? bloc(
                   "Autorisations 2 h (mois)",
                   `${shortNonFrRest}/${shortNonFrMax}`,
-                  "Hors France : jusqu’à 3 créneaux de 2 h par mois.",
+                  null,
                   "border-amber-600",
                 )
               : null}
-          {bloc("Congé maladie", joursMal, maladieSousTexte, "border-teal-600")}
+          {bloc("Congé maladie", joursMal, null, "border-teal-600")}
         </div>
       </div>
     );

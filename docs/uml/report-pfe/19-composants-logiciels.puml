@@ -1,0 +1,46 @@
+@startuml PFE_19_Composants
+!theme cerulean-outline
+title Diagramme de composants — Vue logique système
+
+package "Poste client" {
+  [Navigateur — SPA React\nEmployé / écran GRH (/rh/*)] as SPA
+}
+
+package "Passerelle (option Docker)" {
+  [Nginx — proxy /api] as NGX
+}
+
+package "Serveur applicatif" {
+  [API REST Spring Boot] as API
+  [Sécurité JWT\nSecurityConfig + JwtAuthFilter] as SEC
+  [Services métier\nCongeService, Hr*, History, Dolibarr*, AI…] as SVC
+  [DolibarrBackgroundSyncFacade\n@Async taskExecutor] as BGF
+  [DolibarrSyncService] as SYNC
+  [Spring Data Repositories] as REP
+}
+
+database "MySQL" as DB
+cloud "Dolibarr ERP" as DOLI
+cloud "SMTP" as SMTP
+
+SPA --> NGX : HTTPS
+NGX --> API : /api/*
+SPA --> API : dev direct localhost:8080
+
+API --> SEC
+API --> SVC
+SVC --> REP
+REP --> DB
+SVC --> DOLI
+SVC --> SMTP
+
+SVC ..> BGF : AuthService\nafterCommit login
+BGF --> SYNC
+SYNC --> DOLI
+SYNC --> DB
+
+note bottom of SPA
+**Employé** : routes /employee/*\n**GRH** : même SPA, routes /rh/*\n(groupe organisationnel)
+end note
+
+@enduml

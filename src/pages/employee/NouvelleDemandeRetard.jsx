@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useDemandes from "../../hooks/useDemandes";
+import { getSuperAdmins } from "../../utils/rhApi";
 
 export default function NouvelleDemandeRetard() {
   const navigate = useNavigate();
@@ -9,8 +10,16 @@ export default function NouvelleDemandeRetard() {
   const [date, setDate] = useState("");
   const [heureArrivee, setHeureArrivee] = useState("");
   const [motif, setMotif] = useState("");
+  const [approvedByAdminId, setApprovedByAdminId] = useState("");
+  const [admins, setAdmins] = useState([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getSuperAdmins()
+      .then((rows) => setAdmins(Array.isArray(rows) ? rows : []))
+      .catch(() => setAdmins([]));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +50,11 @@ export default function NouvelleDemandeRetard() {
       return;
     }
 
+    if (admins.length > 0 && !approvedByAdminId) {
+      setFormError("Veuillez sélectionner « Approuvé par ».");
+      return;
+    }
+
     try {
       setSubmitting(true);
       await creerDemande({
@@ -48,6 +62,7 @@ export default function NouvelleDemandeRetard() {
         date,
         heureArrivee,
         motif: motif || undefined,
+        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
       });
       navigate("/employee/historique");
     } catch {
@@ -97,6 +112,29 @@ export default function NouvelleDemandeRetard() {
           className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 fade-in-up"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="sm:col-span-2">
+              <label className="text-sm font-semibold text-slate-700 block mb-2">
+                Approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                value={approvedByAdminId}
+                onChange={(e) => setApprovedByAdminId(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">
+                  {admins.length > 0 ? "Sélectionner un Super Admin" : "Super Admins indisponibles (mode compat)"}
+                </option>
+                {admins.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Ce champ est requis si la liste des Super Admins est disponible.
+              </p>
+            </div>
+
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
                 Date <span className="text-red-500">*</span>

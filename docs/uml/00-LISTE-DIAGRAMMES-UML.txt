@@ -1,0 +1,9 @@
+Diagrammes livrables (génération : PlantUML / extension IDE)
+=============================================================
+
+class-diagram.puml           … Classes métier BPM (entités JPA principales)
+sequence-leave-request.puml  … Séquence demande de congé (création + décision)
+use-case-diagram.puml       … Cas d'utilisation (Employé, Responsable RH)
+
+Complément détaillé :
+15-jpa-entities-class-diagram.puml … Toutes les tables @Entity du backend

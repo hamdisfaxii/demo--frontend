@@ -1,0 +1,31 @@
+@startuml PFE_22_Architecture_Conteneurs
+!theme cerulean-outline
+skinparam rectangleRoundCorner 14
+
+title Architecture technique — Vue conteneurs\n(sans dépendance externe C4)
+
+rectangle "Acteurs\n— Employé\n— GRH (groupe RH)" as ACT #E6FFFA
+
+rectangle "Conteneur : SPA React\n(Vite + React Router)" as WEB #BEE3F8 {
+  note right
+  Employé : /employee/*\nGRH : /rh/*\nauthcontext : normalisation rôles
+  end note
+}
+
+rectangle "Conteneur : API Spring Boot 2.7\nJava 17 — stateless JWT\n(Auth, Congés, RH, IA,\nHistorique, DolibarrSync…)" as API #C6F6D5
+
+database "MySQL\n(données métier)" as DB #FEFCBF
+cloud "Dolibarr\nERP & CRM" as EXT #FED7D7
+cloud "SMTP\n(e-mails)" as SMTP #E9D8FD
+
+ACT --> WEB : HTTPS
+WEB --> API : JSON + Bearer JWT
+API --> DB : JPA / JDBC
+API --> EXT : REST (+ accès DB Dolibarr optionnel)
+API --> SMTP : envoi notifications
+
+note bottom of API
+AuthService déclenche après commit une synchro\nvia **DolibarrBackgroundSyncFacade** →\n**DolibarrSyncService** (même service que l'API /dolibarr/sync).
+end note
+
+@enduml

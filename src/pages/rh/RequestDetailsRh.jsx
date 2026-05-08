@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { decideHrRequest, getHrRequestById } from "../../utils/rhApi";
 import Spinner from "../../components/commun/Spinner";
@@ -13,7 +13,7 @@ export default function RequestDetailsRh() {
   const [request, setRequest] = useState(null);
   const [comment, setComment] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -23,11 +23,11 @@ export default function RequestDetailsRh() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [load]);
 
   const decide = async (action) => {
     setLoading(true);
@@ -78,6 +78,16 @@ export default function RequestDetailsRh() {
                   </div>
                 </div>
                 <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">Approuvé par</div>
+                  <div className="text-sm text-slate-900">
+                    {(() => {
+                      const ap = request?.approuvePar ?? request?.approvedBy ?? null;
+                      const nm = `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim();
+                      return nm || ap?.email || "-";
+                    })()}
+                  </div>
+                </div>
+                <div>
                   <div className="text-xs font-semibold uppercase text-slate-500">Statut</div>
                   <div className="text-sm text-slate-900">
                     <StatutBadge statut={request.statut} />
@@ -93,6 +103,31 @@ export default function RequestDetailsRh() {
                   <div className="text-xs font-semibold uppercase text-slate-500">Période</div>
                   <div className="text-sm text-slate-900">
                     {request.dateDebut} → {request.dateFin}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">Durée</div>
+                  <div className="text-sm text-slate-900">
+                    {(() => {
+                      const exact = request?.nombreJoursExact ?? null;
+                      const raw = request?.nombreJours ?? null;
+                      const n =
+                        typeof exact === "number"
+                          ? exact
+                          : typeof raw === "number"
+                            ? raw
+                            : Number(raw);
+                      const val = Number.isFinite(n) ? n : null;
+                      const sh = String(request?.startHalfDay ?? "").toUpperCase();
+                      const eh = String(request?.endHalfDay ?? "").toUpperCase();
+                      const labelHalf = (h) =>
+                        h === "MORNING" ? "Matin" : h === "AFTERNOON" ? "Après-midi" : "";
+                      const halfInfo =
+                        sh || eh
+                          ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})`
+                          : "";
+                      return val == null ? "-" : `${val} jour(s)${halfInfo}`;
+                    })()}
                   </div>
                 </div>
                 <div className="sm:col-span-2">

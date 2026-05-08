@@ -1,0 +1,35 @@
+@startuml PFE_09_SEQ_CreateDemande
+!theme cerulean-outline
+title Séquence — Création d'une demande de congé\n(acteur : Employé)
+
+actor "Employé" as EMP
+participant "NouvelleDemande.jsx\n(ou équivalent)" as FE
+participant "CongeController /\nDemandeController\nPOST /api/..." as DC
+participant "CongeService\ncreerDemande" as CS
+participant "Règles métier\n(CountryPolicyService,\nHrWorkScheduleService,\nHourlyLeaveCapEvaluator,\nFranceRttLedgerService…)" as RULES
+participant "WorkflowService" as WF
+database "demandes_conge" as DEM
+participant "HistoryService" as HIS
+
+EMP -> FE : saisie formulaire
+FE -> DC : POST + JWT (principal UserEntity)
+
+DC -> CS : creerDemande(userId, DemandeCongeRequest)
+
+CS -> RULES : validations pays,\nchevauchements, soldes, caps…
+
+alt échec validation
+  RULES --> CS : exception
+  CS --> DC : 4xx
+  DC --> FE : erreur
+else succès
+  CS -> WF : initialisation workflow\nsi actif
+  CS -> DEM : persist DemandeConge\n(@PrePersist : jours ouvrés)
+  opt journalisation
+    CS -> HIS : CREATE / SUBMIT
+  end
+  CS --> DC : DemandeCongeResponse
+  DC --> FE : 200 OK
+end
+
+@enduml

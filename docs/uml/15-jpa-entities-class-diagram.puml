@@ -1,0 +1,325 @@
+@startuml JPA_Entity_Classes_Spring_Boot
+!theme plain
+title Diagramme de classes — entités JPA réelles\n`com.example.conges.entity` (Spring Boot, BPM congés)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+' ========== Énumérations (fichiers dédiés ou imbriqués) ==========
+enum Role {
+  EMPLOYE
+  RH
+  MANAGER
+  ADMIN
+}
+
+enum TypeConge {
+  PAYE
+  MALADIE
+  SANS_SOLDE
+  COURTE_DUREE
+}
+
+enum StatutConge {
+  EN_ATTENTE
+  ACCEPTE
+  REFUSE
+  ANNULE
+}
+
+enum WorkflowStepType {
+  MANAGER_APPROVAL
+  RH_APPROVAL
+  ADMIN_APPROVAL
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum SyncDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+}
+
+enum FranceRttAccrualMode {
+  ANNUAL_JAN1
+  MONTHLY
+  CONTRACT_HOURS
+}
+
+enum "History.ActionType" as ActionType {
+  CREATE
+  SUBMIT
+  APPROVE
+  REJECT
+  CANCEL
+  UPDATE
+  DOCUMENT_SENT
+  EXPORTED
+  SYNCED_DOLIBARR
+  LOGIN
+  LOGOUT
+  REPORT_VIEWED
+  OTHER
+}
+
+package "users & workflow BPM" {
+  class UserEntity <<Entity>> {
+    <<Table users>>
+    -Long id
+    -Long dolibarrId
+    -String email
+    -String nom
+    -String prenom
+    -Role role
+    -String pays
+    -String countryCode
+    -BigDecimal weeklyHours
+    -Integer annualWorkDays
+    -String contractType
+    -boolean contractActive
+    -LocalDate hireDate
+    -String departement
+    -LocalDateTime createdAt
+    -LocalDateTime updatedAt
+  }
+
+  class DemandeConge <<Entity>> {
+    <<Table demandes_conge>>
+    -Long id
+    -TypeConge typeConge
+    -LocalDate dateDebut
+    -LocalDate dateFin
+    -int nombreJours
+    -StatutConge statut
+    -String motif
+    -String commentaireRh
+    -LocalDateTime dateSoumission
+    -LocalDateTime dateTraitement
+    -String workflowCode
+    -Integer currentStepOrder
+    -WorkflowStepType currentStepType
+    -Long dolibarrLeaveRequestId
+    -LocalTime permissionHeureDebut
+    -LocalTime permissionHeureFin
+    -Integer dureePermissionMinutes
+  }
+
+  class DemandeApproval <<Entity>> {
+    <<Table demande_approvals>>
+    -Long id
+    -Integer stepOrder
+    -WorkflowStepType stepType
+    -ApprovalDecision decision
+    -String comment
+    -LocalDateTime decisionDate
+  }
+
+  class WorkflowDefinition <<Entity>> {
+    <<Table workflow_definitions>>
+    -Long id
+    -String code
+    -String countryCode
+    -Boolean active
+    -LocalDateTime createdAt
+    -LocalDateTime updatedAt
+  }
+
+  class WorkflowStep <<Entity>> {
+    <<Table workflow_steps>>
+    -Long id
+    -Integer stepOrder
+    -WorkflowStepType stepType
+    -Role approverRole
+    -Boolean required
+    -Integer minDays
+    -Integer maxDays
+    --
+    (applicableLeaveTypes: Set<TypeConge> \nvia AttributeConverter)
+  }
+
+  class History <<Entity>> {
+    <<Table history>>
+    -Long id
+    -ActionType actionType
+    -String description
+    -String details
+    -String pays
+    -String statut
+    -LocalDateTime actionDate
+    -String ipAddress
+    -String userAgent
+  }
+}
+
+package "Dolibarr, types & allocations" {
+  class DolibarrSyncLog <<Entity>> {
+    <<Table dolibarr_sync_logs>>
+    -Long id
+    -String entityType
+    -String operation
+    -Long localEntityId
+    -Long remoteEntityId
+    -SyncDirection direction
+    -SyncStatus status
+    -String message
+    -String payload
+    -LocalDateTime createdAt
+  }
+
+  class LeaveType <<Entity>> {
+    <<Table leave_types>>
+    -Long id
+    -Long dolibarrLeaveTypeId
+    -String code
+    -String libelle
+    -String description
+    -String couleur
+    -Boolean active
+    -Boolean requiresApproval
+    -Long delai
+    -LocalDateTime createdAt
+    -LocalDateTime updatedAt
+    -Integer syncStatus
+  }
+
+  class EmployeeLeaveAllocation <<Entity>> {
+    <<Table employee_leave_allocations>>
+    -Long id
+    -Long dolibarrAllocationId
+    -Double joursInitiaux
+    -Double joursUtilises
+    -Double joursDisponibles
+    -Integer annee
+    -LocalDate dateDebut
+    -LocalDate dateFin
+    -Boolean active
+    -LocalDateTime createdAt
+    -LocalDateTime updatedAt
+  }
+
+  class Holiday <<Entity>> {
+    <<Table holidays>>
+    -Long id
+    -Long dolibarrHolidayId
+    -String libelle
+    -LocalDate dateJour
+    -Double duree
+    -Long idPays
+    -String countryCode
+    -Boolean active
+    -LocalDateTime createdAt
+    -LocalDateTime updatedAt
+  }
+}
+
+package "Politiques pays, horaires, RTT France" {
+  class CountryLeavePolicy <<Entity>> {
+    <<Table country_leave_policies>>
+    -Long id
+    -String countryCode
+    -TypeConge typeConge
+    -Integer annualQuota
+    -Double monthlyAccrualRate
+    -boolean rttEnabled
+    -Integer rttAnnualDays
+  }
+
+  class FranceRttSettings <<Entity>> {
+    <<Table france_rtt_settings>>
+    -Long id
+    -FranceRttAccrualMode accrualMode
+    -Integer adminOverrideDays
+    -LocalDateTime updatedAt
+  }
+
+  class EmployeeFranceRttBalance <<Entity>> {
+    <<Table employee_france_rtt_balance>>
+    -Long id
+    -int calendarYear
+    -BigDecimal rttTotal
+    -BigDecimal rttUsed
+    -BigDecimal rttRemaining
+    -LocalDateTime lastRttUpdate
+  }
+
+  class WorkScheduleSetting <<Entity>> {
+    <<Table work_schedule_settings>>
+    -Long id
+    -String countryCode
+    -String activeType
+    -Boolean normalEnabled
+    -Boolean summerEnabled
+    -Boolean ramadanEnabled
+  }
+
+  class WorkScheduleDay <<Entity>> {
+    <<Table work_schedule_days>>
+    -Long id
+    -String countryCode
+    -String scheduleType
+    -Integer dayOfWeek
+    -LocalTime firstStart
+    -LocalTime firstEnd
+    -LocalTime secondStart
+    -LocalTime secondEnd
+  }
+
+  class ExceptionalLeaveConfig <<Entity>> {
+    <<Table exceptional_leave_configs>>
+    -Long id
+    -String countryCode
+    -String label
+    -Integer daysPerYear
+    -Boolean enabled
+  }
+}
+
+' ========== Associations (FK JPA) ==========
+UserEntity "1" o-- "0..*" DemandeConge : user
+UserEntity "1" o-- "0..*" DemandeApproval : actor
+UserEntity "1" o-- "0..*" History : user
+UserEntity "1" o-- "0..*" EmployeeLeaveAllocation : employee
+UserEntity "1" o-- "0..*" EmployeeFranceRttBalance : user
+
+DemandeConge "1" o-- "0..*" DemandeApproval : demande
+DemandeConge "0..1" o-- "0..*" History : demande
+
+WorkflowDefinition "1" o-- "1..*" WorkflowStep : workflowDefinition
+
+LeaveType "1" o-- "0..*" EmployeeLeaveAllocation : leaveType
+
+DemandeConge --> TypeConge
+DemandeConge --> StatutConge
+DemandeConge --> WorkflowStepType : currentStepType
+UserEntity --> Role
+DemandeApproval --> WorkflowStepType
+DemandeApproval --> ApprovalDecision
+WorkflowStep --> WorkflowStepType
+WorkflowStep --> Role : approverRole
+EmployeeFranceRttBalance --> UserEntity
+DolibarrSyncLog --> SyncDirection
+DolibarrSyncLog --> SyncStatus
+CountryLeavePolicy --> TypeConge
+FranceRttSettings --> FranceRttAccrualMode
+History --> ActionType
+
+note bottom of UserEntity
+  **React** consomme les DTO ; ce diagramme ne montre
+  que les **vraies classes @Entity** du module Java.
+end note
+
+note bottom of WorkflowStep
+  `applicableLeaveTypes` persiste une liste de noms
+  **TypeConge** en chaîne SQL (converter interne).
+end note
+
+@enduml

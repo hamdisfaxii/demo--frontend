@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createExceptionalLeave,
   getExceptionalLeaves,
@@ -76,7 +76,7 @@ export default function ConfigurationRh() {
     [activeCountry],
   );
 
-  const load = async (countryCode = activeCountry) => {
+  const load = useCallback(async (countryCode = activeCountry) => {
     setLoading(true);
     setError("");
     try {
@@ -87,13 +87,13 @@ export default function ConfigurationRh() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCountry]);
 
   useEffect(() => {
     load(activeCountry);
     setEditingId(null);
     setShowAddForm(false);
-  }, [activeCountry]);
+  }, [activeCountry, load]);
 
   useEffect(() => {
     const userCountry = String(user?.country ?? "")
@@ -102,9 +102,9 @@ export default function ConfigurationRh() {
     if (userCountry && COUNTRIES.some((c) => c.code === userCountry) && userCountry !== activeCountry) {
       setActiveCountry(userCountry);
     }
-  }, [user?.country]);
+  }, [user?.country, activeCountry]);
 
-  const loadSchedule = async (country = activeCountry, type = scheduleType) => {
+  const loadSchedule = useCallback(async (country = activeCountry, type = scheduleType) => {
     setScheduleLoading(true);
     setScheduleError("");
     try {
@@ -130,12 +130,12 @@ export default function ConfigurationRh() {
     } finally {
       setScheduleLoading(false);
     }
-  };
+  }, [activeCountry, scheduleType]);
 
   useEffect(() => {
     loadSchedule(activeCountry, scheduleType);
     setEditingCell(null);
-  }, [activeCountry, scheduleType]);
+  }, [activeCountry, scheduleType, loadSchedule]);
 
   const persistSchedule = async (nextRows, nextOptions = scheduleOptions, nextType = scheduleType) => {
     setScheduleSaving(true);

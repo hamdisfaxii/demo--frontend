@@ -61,6 +61,11 @@ export default function HistoriqueDemandes() {
   const pageSafe = Math.min(page, totalPages);
   const slice = demandes.slice((pageSafe - 1) * perPage, pageSafe * perPage);
 
+  const effectiveStatus =
+    statusFromQuery != null && String(statusFromQuery).trim() !== ""
+      ? statusFromQuery
+      : filters.statut;
+
   const handleSearch = (nextFilters) => {
     setPage(1);
     setFilters({
@@ -72,17 +77,9 @@ export default function HistoriqueDemandes() {
   useEffect(() => {
     fetchDemandes({
       annee: filters.annee,
-      statut: filters.statut,
+      statut: effectiveStatus,
     }).catch(() => {});
-  }, [filters, fetchDemandes]);
-
-  useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      statut: statusFromQuery,
-    }));
-    setPage(1);
-  }, [statusFromQuery]);
+  }, [filters.annee, effectiveStatus, fetchDemandes]);
 
   const handleCancel = (demande) => {
     const id = pickId(demande);
@@ -98,7 +95,7 @@ export default function HistoriqueDemandes() {
       if (!modal.demandeId) return;
       await annulerDemande(modal.demandeId);
       setModal({ isOpen: false, demandeId: null, titre: "" });
-      await fetchDemandes({ annee: filters.annee, statut: filters.statut });
+      await fetchDemandes({ annee: filters.annee, statut: effectiveStatus });
     } catch {
       // error already handled by hook
     }
@@ -126,7 +123,7 @@ export default function HistoriqueDemandes() {
           <FiltresDemandes
             years={years}
             initialAnnee={filters.annee}
-            initialStatut={filters.statut}
+            initialStatut={effectiveStatus}
             onSearch={handleSearch}
             onReset={() => {}}
           />

@@ -1,0 +1,35 @@
+@startuml PFE_17_Activite_DecisionGRH
+!theme cerulean-outline
+title Diagramme d'activité — Décision sur une demande\n(acteur organisationnel : GRH)
+
+start
+
+:Vérifier que l'acteur est autorisé\n(Role RH ou ADMIN — HrDecisionService);
+
+if (Périmètre pays /\naccès demande OK ?) then (non)
+  stop
+endif
+
+if (Décision = APPROUVER ?) then (oui)
+  :CongeService → statut ACCEPTE;
+else (non)
+  :CongeService → statut REFUSE\n+ commentaire RH;
+endif
+
+:History APPROVE ou REJECT;
+
+if (Notifications e-mail actives ?) then (oui)
+  :NotificationService;
+endif
+
+if (Export / synchro Dolibarr\nrequise pour cette demande ?) then (oui)
+  :DolibarrService;
+endif
+
+stop
+
+note right
+**GRH** : plusieurs personnes peuvent enchaîner\nles étapes ; une seule décision finale\npar demande selon règles métier.
+end note
+
+@enduml

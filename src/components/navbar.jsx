@@ -99,6 +99,7 @@ export default function Navbar() {
               <ProNavLink to="/rh/calendar" label="Calendrier" />
               <ProNavLink to="/rh/configuration" label="Paramètres" />
               <ProNavLink to="/rh/jours-feries" label="Jours fériés" />
+              <ProNavLink to="/rh/soldes" label="Soldes" />
             </>
           )}
           {isEmployee && (

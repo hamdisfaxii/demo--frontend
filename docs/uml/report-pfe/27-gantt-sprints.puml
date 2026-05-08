@@ -1,0 +1,15 @@
+@startgantt PFE_27_Gantt_Sprints
+!theme cerulean-outline
+title Diagramme de Gantt — Backlog indicatif (5 sprints)
+
+Project starts the 2026/01/06
+saturday are closed
+sunday are closed
+
+[Sprint 1 — Auth JWT, BDD, synchro post-login] lasts 14 days and starts at 2026/01/06
+[Sprint 2 — Demandes employé] lasts 14 days and starts after [Sprint 1]'s end
+[Sprint 3 — Pilotage GRH, dashboard, historique] lasts 14 days and starts after [Sprint 2]'s end
+[Sprint 4 — Intégration Dolibarr] lasts 14 days and starts after [Sprint 3]'s end
+[Sprint 5 — IA, UX, validation finale] lasts 14 days and starts after [Sprint 4]'s end
+
+@endgantt

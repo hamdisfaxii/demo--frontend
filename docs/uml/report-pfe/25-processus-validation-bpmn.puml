@@ -1,0 +1,38 @@
+@startuml PFE_25_Processus_Validation
+!theme cerulean-outline
+title Processus métier — Validation d'une demande de congé\n(couloirs : Employé / GRH / Système)
+
+|Employé|
+start
+:Saisir et soumettre\nune demande de congé;
+
+|#LightBlue|Système|
+:Créer DemandeConge\nstatut EN_ATTENTE;
+:Journalisation éventuelle\n(HistoryService);
+
+|GRH (membre du groupe)|
+:Consulter file d'attente /\nfiltres RH;
+
+if (Décision favorable ?) then (oui)
+  |#LightBlue|Système|
+  :Mettre à jour statut ACCEPTE;
+  :Tracer APPROVE dans history;
+  if (Notification e-mail ?) then (oui)
+    :SMTP;
+  endif
+  if (Synchronisation Dolibarr\npour absence validée ?) then (oui)
+    :Appel DolibarrService;
+  endif
+else (non)
+  |#LightBlue|Système|
+  :Mettre à jour statut REFUSE;
+  :Tracer REJECT dans history;
+endif
+
+stop
+
+note bottom
+**GRH** = groupe des responsables RH :\nplusieurs personnes peuvent participer\nau processus selon règles internes.
+end note
+
+@enduml

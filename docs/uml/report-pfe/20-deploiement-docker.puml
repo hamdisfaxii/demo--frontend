@@ -1,0 +1,28 @@
+@startuml PFE_20_Deploiement
+!theme cerulean-outline
+title Diagramme de déploiement — Stack Docker type compose\n(frontend + backend + MySQL)
+
+node "Machine hôte" {
+
+  node "Conteneur MySQL 8" as MYSQL {
+    artifact "Bases : conges_db\n(+ dolibarr optionnel)"
+  }
+
+  node "Conteneur Backend\nSpring Boot\nport 8080" as BE {
+    artifact "gestion-conges-backend"
+  }
+
+  node "Conteneur Frontend\nNginx\nport 80 ou 5176" as FE {
+    artifact "Build React (Vite)"
+  }
+
+  node "Conteneur Dolibarr\n(profile optionnel)" as DOLI {
+    artifact "ERP web"
+  }
+}
+
+FE --> BE : HTTP /api\n(reverse proxy)
+BE --> MYSQL : JDBC\nSPRING_DATASOURCE_URL
+BE --> DOLI : HTTPS\nDOLIBARR_URL
+
+@enduml

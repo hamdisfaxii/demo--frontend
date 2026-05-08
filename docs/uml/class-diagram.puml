@@ -1,0 +1,125 @@
+@startuml Class_Diagram_BPM_Leave
+!theme plain
+title Diagramme de classes — domaine métier BPM / congés\n(entités JPA `com.example.conges.entity`, **vue principale**)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+enum Role {
+  EMPLOYE
+  RH
+  MANAGER
+  ADMIN
+}
+
+enum TypeConge {
+  PAYE
+  MALADIE
+  SANS_SOLDE
+  COURTE_DUREE
+}
+
+enum StatutConge {
+  EN_ATTENTE
+  ACCEPTE
+  REFUSE
+  ANNULE
+}
+
+enum WorkflowStepType {
+  MANAGER_APPROVAL
+  RH_APPROVAL
+  ADMIN_APPROVAL
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+class UserEntity <<Entity>> {
+  __table users__
+  -Long id
+  -Long dolibarrId
+  -String email
+  -String nom
+  -String prenom
+  -Role role
+  -String pays
+  -String countryCode
+  -String departement
+  --
+  createdAt, updatedAt (auto)
+}
+
+class DemandeConge <<Entity>> {
+  __demandes_conge__
+  -Long id
+  -TypeConge typeConge
+  -LocalDate dateDebut, dateFin
+  -int nombreJours
+  -StatutConge statut
+  -String motif
+  -String commentaireRh
+  -LocalDateTime dateSoumission
+  -LocalDateTime dateTraitement
+  -String workflowCode
+  -Integer currentStepOrder
+  -WorkflowStepType currentStepType
+  -Long dolibarrLeaveRequestId
+  -LocalTime permissionHeureDebut, permissionHeureFin
+  -Integer dureePermissionMinutes
+}
+
+class WorkflowDefinition <<Entity>> {
+  __workflow_definitions__
+  -Long id
+  -String code
+  -String countryCode
+  -Boolean active
+  -LocalDateTime createdAt, updatedAt
+}
+
+class WorkflowStep <<Entity>> {
+  __workflow_steps__
+  -Long id
+  -Integer stepOrder
+  -WorkflowStepType stepType
+  -Role approverRole
+  -Boolean required
+  -Integer minDays, maxDays
+  --
+  Set<TypeConge> applicableLeaveTypes
+}
+
+class DemandeApproval <<Entity>> {
+  __demande_approvals__
+  -Long id
+  -Integer stepOrder
+  -WorkflowStepType stepType
+  -ApprovalDecision decision
+  -String comment
+  -LocalDateTime decisionDate
+}
+
+UserEntity "1" *-- "many" DemandeConge : emploie / soumet
+UserEntity "1" *-- "many" DemandeApproval : décide (actor)
+DemandeConge "1" *-- "many" DemandeApproval
+
+WorkflowDefinition "1" o-- "1..*" WorkflowStep : définit
+
+DemandeConge ..> TypeConge
+DemandeConge ..> StatutConge
+DemandeConge ..> WorkflowStepType
+UserEntity ..> Role
+WorkflowStep ..> Role
+DemandeApproval ..> WorkflowStepType
+DemandeApproval ..> ApprovalDecision
+
+note bottom
+  **Complément :** toutes les autres tables JPA (soldes Dolibarr,
+  jours fériés, politiques pays, RTT, logs sync, `History`…)
+  dans **15-jpa-entities-class-diagram.puml**.
+end note
+
+@enduml

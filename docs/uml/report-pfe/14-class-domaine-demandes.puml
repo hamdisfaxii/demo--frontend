@@ -1,0 +1,69 @@
+@startuml PFE_14_Class_DomaineDemandes
+!theme cerulean-outline
+skinparam classAttributeIconSize 0
+
+title Diagramme de classes — Domaine demandes de congé\n(entités & services principaux)
+
+package com.example.conges.entity {
+  enum StatutConge <<enumeration>> {
+    EN_ATTENTE
+    ACCEPTE
+    REFUSE
+    ANNULE
+  }
+
+  enum TypeConge <<enumeration>> {
+    PAYE
+    MALADIE
+    SANS_SOLDE
+    COURTE_DUREE
+  }
+
+  class DemandeConge <<Entity>> {
+    + Long id
+    + TypeConge typeConge
+    + StatutConge statut
+    + LocalDate dateDebut
+    + LocalDate dateFin
+    + int nombreJours
+    + Double nombreJoursExact
+    + String motif
+    + ...
+  }
+
+  class UserEntity <<Entity>>
+
+  DemandeConge "*" --> "1" UserEntity : user
+  DemandeConge "0..1" --> "0..1" UserEntity : approvedBy
+  DemandeConge --> StatutConge
+  DemandeConge --> TypeConge
+}
+
+package com.example.conges.service {
+  class CongeService <<@Service>>
+  class HrDecisionService <<@Service>>
+  class HistoryService <<@Service>>
+  class WorkflowService <<@Service>>
+  class NotificationService <<@Service>>
+  class DolibarrService <<@Service>>
+}
+
+package com.example.conges.controller {
+  class CongeController <<@RestController>>
+  class DemandeController <<@RestController>>
+  class HrDecisionController <<@RestController>>
+}
+
+interface DemandeCongeRepository <<Spring Data>>
+
+CongeController --> CongeService
+DemandeController --> CongeService
+HrDecisionController --> HrDecisionService
+HrDecisionService --> CongeService
+CongeService --> DemandeCongeRepository
+CongeService ..> HistoryService
+CongeService ..> WorkflowService
+CongeService ..> NotificationService
+CongeService ..> DolibarrService
+
+@enduml

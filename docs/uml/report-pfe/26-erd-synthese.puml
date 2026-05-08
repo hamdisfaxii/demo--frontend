@@ -1,0 +1,85 @@
+@startuml PFE_26_ERD_Synthese
+!theme cerulean-outline
+skinparam linetype ortho
+title Modèle entité-relation — Vue synthétique\n(alignée sur JPA + scripts workflow / sync)
+
+hide circle
+
+entity "users" as U {
+  * id : BIGINT <<PK>>
+  --
+  dolibarr_id : BIGINT
+  email : VARCHAR <<UK>>
+  role : VARCHAR
+  pays : VARCHAR
+  ...
+}
+
+entity "demandes_conge" as D {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  type_conge : VARCHAR
+  statut : VARCHAR
+  date_debut / date_fin : DATE
+  nombre_jours : INT
+  nombre_jours_exact : DECIMAL
+  approved_by_admin_id : BIGINT <<FK nullable>>
+  dolibarr_leave_request_id : BIGINT
+  ...
+}
+
+entity "history" as H {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT
+  demande_id : BIGINT
+  action_type : VARCHAR
+  details : LONGTEXT
+  action_date : DATETIME
+}
+
+entity "workflow_definitions" as WD {
+  * id : BIGINT <<PK>>
+  --
+  code : VARCHAR <<UK>>
+}
+
+entity "workflow_steps" as WS {
+  * id : BIGINT <<PK>>
+  --
+  * workflow_definition_id : BIGINT <<FK>>
+  step_order : INT
+}
+
+entity "demande_approvals" as DA {
+  * id : BIGINT <<PK>>
+  --
+  * demande_id : BIGINT <<FK>>
+  * actor_user_id : BIGINT <<FK>>
+  decision : VARCHAR
+}
+
+entity "dolibarr_sync_logs" as SL {
+  * id : BIGINT <<PK>>
+  --
+  entity_type : VARCHAR
+  direction : VARCHAR
+  status : VARCHAR
+  created_at : DATETIME
+}
+
+U ||--o{ D : soumet
+U ||--o{ D : approuvé_par
+WD ||--o{ WS
+D ||--o{ DA
+U ||--o{ DA : acteur
+
+H .. U : lien logique (pas de FK obligatoire)
+H .. D : lien logique
+
+note bottom of H
+Entité **History** : snapshot autonome\n(documentation code).
+end note
+
+@enduml
