@@ -87,21 +87,21 @@ export default function DashboardEmploye() {
         <div className="mt-10 flex flex-wrap justify-center gap-6">
           <div className="w-full sm:w-80">
             <CarteAction
-              titre="Mon calendrier"
-              description="Vue mois : congés validés ou en attente et jours fériés selon votre pays."
-              boutonTexte="Ouvrir le calendrier"
-              icone={<div className="text-2xl">📆</div>}
-              onClick={() => navigate("/employee/calendar")}
-            />
-          </div>
-
-          <div className="w-full sm:w-80">
-            <CarteAction
               titre="Je demande un congé"
               description="Créez une nouvelle demande de congé en quelques secondes."
               boutonTexte="Nouvelle demande"
               icone={<div className="text-2xl">📅</div>}
               onClick={() => navigate("/employee/conge/new")}
+            />
+          </div>
+
+          <div className="w-full sm:w-80">
+            <CarteAction
+              titre="Congés exceptionnels"
+              description="Mariage, naissance, décès… Consultez vos droits et faites une demande."
+              boutonTexte="Voir / Demander"
+              icone={<div className="text-2xl">🎯</div>}
+              onClick={() => navigate("/employee/exceptionnels")}
             />
           </div>
 

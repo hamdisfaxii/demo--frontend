@@ -4,8 +4,15 @@ import { isFranceSortieCourteEligible } from "../../utils/country";
 function formatRttFranceJours(val) {
   if (val == null || !Number.isFinite(Number(val))) return "—";
   const n = Number(val);
-  if (Math.abs(n - Math.round(n)) < 1e-6) return String(Math.round(n));
-  return n.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  // Si c'est un entier (ex: 7), afficher sans décimales
+  if (Math.abs(n - Math.round(n)) < 1e-6) {
+    return String(Math.round(n));
+  }
+  // Pour les décimales, afficher avec virgule française (ex: 7,5 ou 7,25)
+  return n.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
@@ -25,7 +32,12 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
       shortNonFrRest != null &&
       shortNonFrMax != null;
 
-    const bloc = (title, valeurOuTexte, sousTitre, borderClassName = "border-blue-600") => (
+    const bloc = (
+      title,
+      valeurOuTexte,
+      sousTitre,
+      borderClassName = "border-blue-600",
+    ) => (
       <div
         key={title}
         className={`bg-white rounded-2xl shadow-md border-l-4 ${borderClassName} p-5 flex flex-col gap-1 fade-in-up`}
@@ -36,11 +48,15 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
         <div className="text-2xl font-bold text-slate-900">
           {valeurOuTexte}
           {typeof valeurOuTexte === "number" && (
-            <span className="text-base text-slate-600 font-semibold ml-1">jours</span>
+            <span className="text-base text-slate-600 font-semibold ml-1">
+              jours
+            </span>
           )}
         </div>
         {sousTitre && (
-          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{sousTitre}</p>
+          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+            {sousTitre}
+          </p>
         )}
       </div>
     );
@@ -74,7 +90,9 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                         </div>
                         <div className="text-lg font-bold text-slate-900">
                           {formatRttFranceJours(franceRtt.total)}{" "}
-                          <span className="text-sm font-semibold text-slate-600">j</span>
+                          <span className="text-sm font-semibold text-slate-600">
+                            j
+                          </span>
                         </div>
                       </div>
                       <div>
@@ -83,7 +101,9 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                         </div>
                         <div className="text-lg font-bold text-slate-900">
                           {formatRttFranceJours(franceRtt.used)}{" "}
-                          <span className="text-sm font-semibold text-slate-600">j</span>
+                          <span className="text-sm font-semibold text-slate-600">
+                            j
+                          </span>
                         </div>
                       </div>
                       <div>
@@ -92,7 +112,9 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                         </div>
                         <div className="text-lg font-bold text-emerald-800">
                           {formatRttFranceJours(franceRtt.remaining)}{" "}
-                          <span className="text-sm font-semibold text-slate-600">j</span>
+                          <span className="text-sm font-semibold text-slate-600">
+                            j
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -100,16 +122,21 @@ export default function SoldeConge({ soldeSummary, solde, employeeCountry }) {
                 )}
               </div>
             ) : (
-              bloc("RTT / sortie courte", Number(permission) || 0, null, "border-violet-600")
+              bloc(
+                "RTT / sortie courte",
+                Number(permission) || 0,
+                null,
+                "border-violet-600",
+              )
             )
-          ) : showShortLeaveCardIntl
-              ? bloc(
-                  "Autorisations 2 h (mois)",
-                  `${shortNonFrRest}/${shortNonFrMax}`,
-                  null,
-                  "border-amber-600",
-                )
-              : null}
+          ) : showShortLeaveCardIntl ? (
+            bloc(
+              "Autorisations 2 h (mois)",
+              `${shortNonFrRest}/${shortNonFrMax}`,
+              null,
+              "border-amber-600",
+            )
+          ) : null}
           {bloc("Congé maladie", joursMal, null, "border-teal-600")}
         </div>
       </div>

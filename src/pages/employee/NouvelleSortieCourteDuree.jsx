@@ -33,7 +33,8 @@ function minutesDelta(hd, hf) {
 export default function NouvelleSortieCourteDuree() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { loading, error, fetchSolde, soldeSummary, creerDemande } = useDemandes();
+  const { loading, error, fetchSolde, soldeSummary, creerDemande } =
+    useDemandes();
 
   const fr = isFranceSortieCourteEligible(user?.country);
   const [frMode, setFrMode] = useState("RTT"); // "RTT" | "2H"
@@ -128,7 +129,17 @@ export default function NouvelleSortieCourteDuree() {
       }
     }
 
-    if (!fr) {
+    // Validations conditionnelles selon le pays et le mode
+    if (fr && frMode === "RTT") {
+      // Mode RTT: seulement valider la période
+      if (!periodeFr) {
+        setFormError(
+          "Veuillez sélectionner une période (Journée/Matin/Après-midi).",
+        );
+        return;
+      }
+    } else if (fr && frMode === "2H") {
+      // Mode 2H en France: valider les heures
       if (!heureDebut) {
         setFormError("Veuillez renseigner l'heure de début.");
         return;
@@ -137,8 +148,8 @@ export default function NouvelleSortieCourteDuree() {
         setFormError("Veuillez renseigner l'heure de fin.");
         return;
       }
-    }
-    if (fr && frMode === "2H") {
+    } else if (!fr) {
+      // Hors France (TN/MA): valider les heures
       if (!heureDebut) {
         setFormError("Veuillez renseigner l'heure de début.");
         return;
@@ -159,18 +170,21 @@ export default function NouvelleSortieCourteDuree() {
       return;
     }
 
+    // Contrôle de durée et limite mensuelle : seulement pour mode 2H et non-France
     if (!fr || (fr && frMode === "2H")) {
       const capRest = typeof restantes === "number" ? restantes : maxMois;
       if (capRest <= 0) {
-        setFormError("Limite mensuelle de 2 autorisations courtes (2 h) atteinte.");
-        return;
-      }
-      const md = minutesDelta(heureDebut, heureFin);
-      if (md !== FIXED_MINUTES) {
         setFormError(
-          "La durée doit être exactement 2 heures.",
+          "Limite mensuelle de 2 autorisations courtes (2 h) atteinte.",
         );
         return;
+      }
+      if (heureDebut && heureFin) {
+        const md = minutesDelta(heureDebut, heureFin);
+        if (md !== FIXED_MINUTES) {
+          setFormError("La durée doit être exactement 2 heures.");
+          return;
+        }
       }
     }
 
@@ -181,12 +195,12 @@ export default function NouvelleSortieCourteDuree() {
         dateSortie: dDeb,
         dateDebut: dDeb,
         dateFin: dFin,
-        heureDebut: fr ? (frMode === "2H" ? heureDebut : null) : heureDebut,
-        heureFin: fr ? (frMode === "2H" ? heureFin : null) : heureFin,
+        heureDebut: fr && frMode === "RTT" ? periodeFr : heureDebut,
+        heureFin: fr && frMode === "RTT" ? periodeFr : heureFin,
         motif: motif.trim(),
-        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
-        startHalfDay: fr && frMode === "RTT" && periodeFr ? periodeFr : undefined,
-        endHalfDay: fr && frMode === "RTT" && periodeFr ? periodeFr : undefined,
+        approvedByAdminId: approvedByAdminId
+          ? Number(approvedByAdminId)
+          : undefined,
       });
       navigate("/employee/historique");
     } catch (err) {
@@ -227,7 +241,9 @@ export default function NouvelleSortieCourteDuree() {
 
         <div
           className={`mt-6 rounded-xl border px-5 py-4 ${
-            fr ? "border-violet-200 bg-violet-50" : "border-amber-200 bg-amber-50"
+            fr
+              ? "border-violet-200 bg-violet-50"
+              : "border-amber-200 bg-amber-50"
           }`}
         >
           <div
@@ -244,20 +260,26 @@ export default function NouvelleSortieCourteDuree() {
               <>
                 {soldeSummary
                   ? `${soldeSummary.permission} jour(s) RTT — ${
-                      typeof restantes === "number" ? `${restantes} autorisation(s) 2 h restante(s)` : "—"
+                      typeof restantes === "number"
+                        ? `${restantes} autorisation(s) 2 h restante(s)`
+                        : "—"
                     }`
                   : "—"}
               </>
             ) : (
               <>
-                {typeof utilisees === "number" && typeof restantes === "number" ? (
+                {typeof utilisees === "number" &&
+                typeof restantes === "number" ? (
                   <>
                     {utilisees} / {maxMois} utilisée(s) —{" "}
-                    <span className="text-emerald-800">{restantes} restante(s)</span>
+                    <span className="text-emerald-800">
+                      {restantes} restante(s)
+                    </span>
                   </>
                 ) : (
                   <span className="text-sm font-medium">
-                    Solde du mois : chargez la page ou reconnectez-vous pour afficher le compteur.
+                    Solde du mois : chargez la page ou reconnectez-vous pour
+                    afficher le compteur.
                   </span>
                 )}
               </>
@@ -266,7 +288,9 @@ export default function NouvelleSortieCourteDuree() {
         </div>
 
         {(loading || submitting) && (
-          <div className="mt-4 text-sm font-medium text-slate-600">Chargement...</div>
+          <div className="mt-4 text-sm font-medium text-slate-600">
+            Chargement...
+          </div>
         )}
         {error && (
           <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
@@ -284,7 +308,8 @@ export default function NouvelleSortieCourteDuree() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="sm:col-span-2">
               <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
+                Approuvé par{" "}
+                {admins.length > 0 && <span className="text-red-500">*</span>}
               </label>
               <select
                 value={approvedByAdminId}
@@ -292,11 +317,13 @@ export default function NouvelleSortieCourteDuree() {
                 className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">
-                  {admins.length > 0 ? "Sélectionner un Super Admin" : "Super Admins indisponibles (mode compat)"}
+                  {admins.length > 0
+                    ? "Sélectionner un Super Admin"
+                    : "Super Admins indisponibles (mode compat)"}
                 </option>
                 {admins.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                    {a.name || a.email}
                   </option>
                 ))}
               </select>
@@ -307,7 +334,8 @@ export default function NouvelleSortieCourteDuree() {
 
             <div>
               <label className="text-sm font-semibold text-slate-700 block mb-2">
-                {fr ? "Date début" : "Date"} <span className="text-red-500">*</span>
+                {fr ? "Date début" : "Date"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -380,8 +408,10 @@ export default function NouvelleSortieCourteDuree() {
                       value={periodeFr}
                       onChange={(e) => setPeriodeFr(e.target.value)}
                       className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      required
                     >
-                      <option value="">Journée complète</option>
+                      <option value="">-- Sélectionner --</option>
+                      <option value="FULL_DAY">Journée complète</option>
                       <option value="MORNING">Matin (0.5)</option>
                       <option value="AFTERNOON">Après-midi (0.5)</option>
                     </select>
@@ -397,7 +427,6 @@ export default function NouvelleSortieCourteDuree() {
                         value={heureDebut}
                         onChange={(e) => setHeureDebut(e.target.value)}
                         className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        required
                       />
                     </div>
                     <div>
@@ -409,7 +438,6 @@ export default function NouvelleSortieCourteDuree() {
                         value={heureFin}
                         readOnly
                         className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        required
                       />
                       <p className="mt-1 text-xs text-slate-500">
                         Calculée automatiquement : début + 2 h (règle métier).
@@ -429,7 +457,6 @@ export default function NouvelleSortieCourteDuree() {
                     value={heureDebut}
                     onChange={(e) => setHeureDebut(e.target.value)}
                     className="w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    required
                   />
                 </div>
 
@@ -445,7 +472,6 @@ export default function NouvelleSortieCourteDuree() {
                     className={`w-full border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                       !fr ? "bg-slate-50 text-slate-700" : ""
                     }`}
-                    required
                   />
                   {!fr ? (
                     <p className="mt-1 text-xs text-slate-500">
@@ -465,7 +491,9 @@ export default function NouvelleSortieCourteDuree() {
                 onChange={(e) => setMotif(e.target.value)}
                 className="w-full min-h-[120px] resize-y border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder={
-                  fr ? "Ex. RTT journée, départ anticipé, etc." : "Ex. autorisation 2 h, motif du déplacement…"
+                  fr
+                    ? "Ex. RTT journée, départ anticipé, etc."
+                    : "Ex. autorisation 2 h, motif du déplacement…"
                 }
                 required
               />
@@ -476,7 +504,9 @@ export default function NouvelleSortieCourteDuree() {
             <div className="mt-6 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="text-red-500 mt-0.5">⚠️</div>
-                <div className="text-sm font-medium text-red-700">{formError}</div>
+                <div className="text-sm font-medium text-red-700">
+                  {formError}
+                </div>
               </div>
             </div>
           )}

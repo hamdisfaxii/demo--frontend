@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createExceptionalLeave,
+  deleteExceptionalLeave,
   getExceptionalLeaves,
   getWorkSchedules,
   saveWorkSchedules,
@@ -256,6 +257,21 @@ export default function ConfigurationRh() {
     }
   };
 
+  const handleDelete = async (row) => {
+    const ok = window.confirm(`Supprimer "${row.label}" ?`);
+    if (!ok) return;
+    setSaving(true);
+    setError("");
+    try {
+      await deleteExceptionalLeave(row.id);
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+    } catch {
+      setError("Impossible de supprimer le congé exceptionnel.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!newLabel.trim()) {
       setError("Veuillez saisir un libellé.");
@@ -373,6 +389,7 @@ export default function ConfigurationRh() {
                     <th className="p-3 font-semibold text-slate-900">Nbr jrs/an</th>
                     <th className="p-3 font-semibold text-slate-900">Modifier</th>
                     <th className="p-3 font-semibold text-slate-900">Appliquer</th>
+                    <th className="p-3 font-semibold text-slate-900">Supprimer</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,11 +443,21 @@ export default function ConfigurationRh() {
                           className="h-4 w-4 accent-blue-600"
                         />
                       </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row)}
+                          disabled={saving}
+                          className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-all disabled:opacity-60"
+                        >
+                          Supprimer
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-slate-500">
+                      <td colSpan={5} className="p-6 text-center text-slate-500">
                         Aucun congé exceptionnel configuré.
                       </td>
                     </tr>

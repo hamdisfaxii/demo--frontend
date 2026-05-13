@@ -531,6 +531,7 @@ export default function useDemandes() {
         endHalfDay: data?.endHalfDay ?? null,
         demandeSortieCourte: Boolean(isSortie),
         approvedByAdminId: data?.approvedByAdminId ?? data?.approuveParId ?? null,
+        exceptionalLeaveConfigId: data?.exceptionalLeaveConfigId ?? null,
       };
 
       // Primary path: Spring backend endpoint.

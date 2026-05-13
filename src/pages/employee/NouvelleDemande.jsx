@@ -106,7 +106,9 @@ export default function NouvelleDemande() {
       typeof soldeCongesPayes === "number" &&
       nbJoursExact > soldeCongesPayes
     ) {
-      setFormError("Vous n'avez pas assez de jours de congés payés disponibles.");
+      setFormError(
+        "Vous n'avez pas assez de jours de congés payés disponibles.",
+      );
       return;
     }
 
@@ -126,7 +128,9 @@ export default function NouvelleDemande() {
         dateFin,
         titre,
         commentaire: commentaire || undefined,
-        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
+        approvedByAdminId: approvedByAdminId
+          ? Number(approvedByAdminId)
+          : undefined,
         startHalfDay: startHalfDay || undefined,
         endHalfDay: endHalfDay || undefined,
       });
@@ -169,10 +173,14 @@ export default function NouvelleDemande() {
           </div>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-base font-semibold text-slate-900">
-              {[user?.prenom, user?.nom].filter(Boolean).join(" ").trim() || user?.email || "—"}
+              {[user?.prenom, user?.nom].filter(Boolean).join(" ").trim() ||
+                user?.email ||
+                "—"}
             </span>
             {user?.email ? (
-              <span className="text-xs text-slate-500 truncate max-w-full">{user.email}</span>
+              <span className="text-xs text-slate-500 truncate max-w-full">
+                {user.email}
+              </span>
             ) : null}
           </div>
         </div>
@@ -210,9 +218,7 @@ export default function NouvelleDemande() {
         >
           <div className="flex flex-col gap-3.5">
             <div>
-              <label className={lbl}>
-                Type
-              </label>
+              <label className={lbl}>Type</label>
               <select
                 value={titre}
                 onChange={(e) => setTitre(e.target.value)}
@@ -226,9 +232,7 @@ export default function NouvelleDemande() {
             </div>
 
             <div>
-              <label className={lbl}>
-                Date début
-              </label>
+              <label className={lbl}>Date début</label>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
                 <input
                   type="date"
@@ -251,9 +255,7 @@ export default function NouvelleDemande() {
             </div>
 
             <div>
-              <label className={lbl}>
-                Date fin
-              </label>
+              <label className={lbl}>Date fin</label>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
                 <input
                   type="date"
@@ -276,9 +278,7 @@ export default function NouvelleDemande() {
             </div>
 
             <div>
-              <label className={lbl}>
-                Nombre de jours (ouvrés)
-              </label>
+              <label className={lbl}>Nombre de jours (ouvrés)</label>
               <input
                 type="text"
                 value={nbJours}
@@ -289,7 +289,8 @@ export default function NouvelleDemande() {
 
             <div>
               <label className={lbl}>
-                Sera approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
+                Sera approuvé par{" "}
+                {admins.length > 0 && <span className="text-red-500">*</span>}
               </label>
               <select
                 value={approvedByAdminId}
@@ -297,20 +298,20 @@ export default function NouvelleDemande() {
                 className={fld}
               >
                 <option value="">
-                  {admins.length > 0 ? "Sélectionner un validateur" : "Validateurs indisponibles (mode compat)"}
+                  {admins.length > 0
+                    ? "Sélectionner un validateur"
+                    : "Validateurs indisponibles (mode compat)"}
                 </option>
                 {admins.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                    {a.name || a.email}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className={lbl}>
-                Description
-              </label>
+              <label className={lbl}>Description</label>
               <textarea
                 value={commentaire}
                 onChange={(e) => setCommentaire(e.target.value)}

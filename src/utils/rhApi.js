@@ -40,7 +40,11 @@ export function normalizeStatus(raw) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
   if (s.includes("ATTENTE") || s.includes("PENDING")) return "PENDING";
-  if (s.includes("APPROUV") || s.includes("ACCEPTE") || s.includes("APPROVED")) {
+  if (
+    s.includes("APPROUV") ||
+    s.includes("ACCEPTE") ||
+    s.includes("APPROVED")
+  ) {
     return "APPROVED";
   }
   if (s.includes("REJET") || s.includes("REFUS") || s.includes("REJECTED")) {
@@ -66,7 +70,10 @@ const mapMockToRequest = (row) => ({
   approuvePar: row.approuvePar ?? row.approvedBy ?? null,
   employe: {
     id: row.userId ?? row.employe?.id,
-    nom: row.employe?.nom ?? row.employe?.fullName?.split(" ").slice(1).join(" ") ?? "",
+    nom:
+      row.employe?.nom ??
+      row.employe?.fullName?.split(" ").slice(1).join(" ") ??
+      "",
     prenom: row.employe?.prenom ?? row.employe?.fullName?.split(" ")[0] ?? "",
     email: row.employe?.email ?? "",
     country: row.employe?.country ?? row.employe?.pays ?? "",
@@ -77,9 +84,10 @@ const mapMockToRequest = (row) => ({
 
 const filterRows = (rows, filters = {}) =>
   rows.filter((r) => {
-    const employeeBlob = `${r.employe?.prenom ?? ""} ${r.employe?.nom ?? ""} ${r.employe?.email ?? ""}`
-      .toLowerCase()
-      .trim();
+    const employeeBlob =
+      `${r.employe?.prenom ?? ""} ${r.employe?.nom ?? ""} ${r.employe?.email ?? ""}`
+        .toLowerCase()
+        .trim();
     const status = normalizeStatus(r.statut);
     const byStatus =
       !filters.status ||
@@ -98,9 +106,14 @@ const filterRows = (rows, filters = {}) =>
       String(r.employe?.department ?? "")
         .toLowerCase()
         .trim() === String(filters.department).toLowerCase().trim();
-    const byStart = !filters.startDate || String(r.dateDebut ?? "") >= String(filters.startDate);
-    const byEnd = !filters.endDate || String(r.dateFin ?? "") <= String(filters.endDate);
-    return byStatus && byEmployee && byCountry && byDepartment && byStart && byEnd;
+    const byStart =
+      !filters.startDate ||
+      String(r.dateDebut ?? "") >= String(filters.startDate);
+    const byEnd =
+      !filters.endDate || String(r.dateFin ?? "") <= String(filters.endDate);
+    return (
+      byStatus && byEmployee && byCountry && byDepartment && byStart && byEnd
+    );
   });
 
 /** Nombre fini ou NaN (évite de traiter "" ou null comme 0 trop tôt). */
@@ -124,10 +137,7 @@ function pickFirstFinite(...candidates) {
  * éventuellement préfixées par le package, ou snake_case côté autre API).
  */
 function extractCountsFromDemandesParStatut(data) {
-  const raw =
-    data?.demandesParStatut ??
-    data?.demandes_par_statut ??
-    null;
+  const raw = data?.demandesParStatut ?? data?.demandes_par_statut ?? null;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { enAttente: NaN, acceptees: NaN, refusees: NaN };
   }
@@ -181,7 +191,10 @@ export async function getHrStats() {
       fromMap.refusees,
     );
     const totalCandidate = toFiniteNumber(
-      data?.total ?? data?.demandesTotal ?? data?.demandes_total ?? leg?.total_demandes,
+      data?.total ??
+        data?.demandesTotal ??
+        data?.demandes_total ??
+        leg?.total_demandes,
     );
     const sumParts = pending + approved + rejected;
     const total = Number.isFinite(totalCandidate)
@@ -222,7 +235,8 @@ export async function getHrStats() {
 
 export async function getHrRequests(filters = {}) {
   const params = {};
-  if (filters.status && filters.status !== "ALL") params.status = filters.status;
+  if (filters.status && filters.status !== "ALL")
+    params.status = filters.status;
   if (filters.employee) params.employee = filters.employee;
   if (filters.country) params.country = filters.country;
   if (filters.department) params.department = filters.department;
@@ -245,14 +259,18 @@ export async function getHrRequests(filters = {}) {
   try {
     const pendingParams = { ...params };
     delete pendingParams.status;
-    const { data } = await api.get("/hr/requests/pending", { params: pendingParams });
+    const { data } = await api.get("/hr/requests/pending", {
+      params: pendingParams,
+    });
     const list = Array.isArray(data) ? data : [];
     const mapped = list.map(mapMockToRequest);
     return filterRows(mapped, filters);
   } catch {
     try {
       const { data } = await api.get("/rh/demandes-en-attente");
-      const rows = Array.isArray(data?.demandes) ? data.demandes.map(mapMockToRequest) : [];
+      const rows = Array.isArray(data?.demandes)
+        ? data.demandes.map(mapMockToRequest)
+        : [];
       return filterRows(rows, filters);
     } catch {
       if (lastError) throw lastError;
@@ -297,7 +315,10 @@ export async function decideHrRequest(id, action, comment) {
   }
 
   try {
-    const { data } = await api.post(`/hr/requests/${id}/decision`, { action, comment });
+    const { data } = await api.post(`/hr/requests/${id}/decision`, {
+      action,
+      comment,
+    });
     return data;
   } catch (e) {
     if (e?.response?.status !== 404) throw e;
@@ -313,10 +334,13 @@ export async function decideHrRequest(id, action, comment) {
 }
 
 export async function getSuperAdmins() {
-  // Mode mock (Node backend) : endpoint Spring Boot non disponible.
-  if (isMockSession()) return [];
-  const { data } = await api.get("/hr/admins");
-  return Array.isArray(data) ? data : [];
+  try {
+    const { data } = await api.get("/hr/admins");
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("Failed to load admins:", e?.message);
+    return [];
+  }
 }
 
 export async function getCalendarEvents(filters = {}) {
@@ -383,8 +407,16 @@ export async function createExceptionalLeave(payload) {
 }
 
 export async function updateExceptionalLeave(id, payload) {
-  const { data } = await api.put(`/hr-config/exceptional-leaves/${id}`, payload);
+  const { data } = await api.put(
+    `/hr-config/exceptional-leaves/${id}`,
+    payload,
+  );
   return data;
+}
+
+export async function deleteExceptionalLeave(id) {
+  const { data } = await api.delete(`/hr-config/exceptional-leaves/${id}`);
+  return data ?? {};
 }
 
 export async function getPublicHolidays(countryCode, year) {
@@ -399,20 +431,28 @@ export async function getPublicHolidays(countryCode, year) {
 
 export async function importPublicHolidays(countryCode, year) {
   // Corps JSON minimal : axios envoie par défaut Content-Type application/json ; un corps vide + ce header peut provoquer un 400 côté Spring.
-  const { data } = await api.post("/hr-config/public-holidays/import", {}, {
-    params: {
-      country: String(countryCode || "TN").toUpperCase(),
-      year: Number(year),
+  const { data } = await api.post(
+    "/hr-config/public-holidays/import",
+    {},
+    {
+      params: {
+        country: String(countryCode || "TN").toUpperCase(),
+        year: Number(year),
+      },
     },
-  });
+  );
   return data;
 }
 
 /** Synchronise les jours fériés officiels (Nager + repli) pour tous les pays RH (TN, FR, MA). */
 export async function importPublicHolidaysAllCountries(year) {
-  const { data } = await api.post("/hr-config/public-holidays/import-all", {}, {
-    params: { year: Number(year) },
-  });
+  const { data } = await api.post(
+    "/hr-config/public-holidays/import-all",
+    {},
+    {
+      params: { year: Number(year) },
+    },
+  );
   return data;
 }
 
@@ -422,9 +462,13 @@ export async function createPublicHoliday(payload) {
 }
 
 export async function applyPublicHoliday(id, applied) {
-  const { data } = await api.put(`/hr-config/public-holidays/${id}/apply`, {}, {
-    params: { applied: Boolean(applied) },
-  });
+  const { data } = await api.put(
+    `/hr-config/public-holidays/${id}/apply`,
+    {},
+    {
+      params: { applied: Boolean(applied) },
+    },
+  );
   return data;
 }
 

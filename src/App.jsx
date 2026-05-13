@@ -11,6 +11,7 @@ import NouvelleSortieCourteDuree from "./pages/employee/NouvelleSortieCourteDure
 import HistoriqueDemandes from "./pages/employee/HistoriqueDemandes";
 import DetailDemande from "./pages/employee/DetailDemande";
 import EmployeeCalendarPage from "./pages/employee/EmployeeCalendarPage";
+import CongesExceptionnels from "./pages/employee/CongesExceptionnels";
 import JoursFeries from "./pages/rh/JoursFeries";
 import DecisionModule from "./pages/rh/DecisionModule";
 import HrDashboard from "./pages/rh/HrDashboard";
@@ -173,6 +174,14 @@ function AppRoutes() {
           element={
             <RequireEmployee>
               <NouvelleDemandeRetard />
+            </RequireEmployee>
+          }
+        />
+        <Route
+          path="/employee/exceptionnels"
+          element={
+            <RequireEmployee>
+              <CongesExceptionnels />
             </RequireEmployee>
           }
         />

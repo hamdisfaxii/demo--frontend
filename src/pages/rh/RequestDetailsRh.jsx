@@ -5,6 +5,24 @@ import Spinner from "../../components/commun/Spinner";
 import StatutBadge from "../../components/employee/StatutBadge";
 import { libelleAffichageTypeConge } from "../../utils/country";
 
+/**
+ * Formate les nombres décimaux avec virgule française (ex: 7,5 pour 7.5)
+ * Affiche les entiers sans décimales (ex: 7 au lieu de 7,00)
+ */
+const formatDecimalFr = (val) => {
+  if (val == null || !Number.isFinite(Number(val))) return "—";
+  const n = Number(val);
+  // Si c'est un entier, afficher sans décimales
+  if (Math.abs(n - Math.round(n)) < 1e-6) {
+    return String(Math.round(n));
+  }
+  // Pour les décimales, afficher avec virgule française
+  return n.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+};
+
 export default function RequestDetailsRh() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,7 +70,9 @@ export default function RequestDetailsRh() {
           Retour liste
         </button>
 
-        <h1 className="mt-4 text-4xl font-bold text-slate-900 fade-in-up">Détail demande RH</h1>
+        <h1 className="mt-4 text-4xl font-bold text-slate-900 fade-in-up">
+          Détail demande RH
+        </h1>
 
         {error && (
           <div className="mt-4 rounded-xl border-l-4 border-red-500 bg-red-50 p-4 shadow-sm">
@@ -72,41 +92,54 @@ export default function RequestDetailsRh() {
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Employé</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Employé
+                  </div>
                   <div className="text-sm text-slate-900">
                     {request.employe?.prenom} {request.employe?.nom}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Approuvé par</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Approuvé par
+                  </div>
                   <div className="text-sm text-slate-900">
                     {(() => {
-                      const ap = request?.approuvePar ?? request?.approvedBy ?? null;
+                      const ap =
+                        request?.approuvePar ?? request?.approvedBy ?? null;
                       const nm = `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim();
                       return nm || ap?.email || "-";
                     })()}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Statut</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Statut
+                  </div>
                   <div className="text-sm text-slate-900">
                     <StatutBadge statut={request.statut} />
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Type</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Type
+                  </div>
                   <div className="text-sm text-slate-900">
                     {libelleAffichageTypeConge(request.typeConge)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Période</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Période
+                  </div>
                   <div className="text-sm text-slate-900">
                     {request.dateDebut} → {request.dateFin}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-slate-500">Durée</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Durée
+                  </div>
                   <div className="text-sm text-slate-900">
                     {(() => {
                       const exact = request?.nombreJoursExact ?? null;
@@ -118,26 +151,42 @@ export default function RequestDetailsRh() {
                             ? raw
                             : Number(raw);
                       const val = Number.isFinite(n) ? n : null;
-                      const sh = String(request?.startHalfDay ?? "").toUpperCase();
-                      const eh = String(request?.endHalfDay ?? "").toUpperCase();
+                      const sh = String(
+                        request?.startHalfDay ?? "",
+                      ).toUpperCase();
+                      const eh = String(
+                        request?.endHalfDay ?? "",
+                      ).toUpperCase();
                       const labelHalf = (h) =>
-                        h === "MORNING" ? "Matin" : h === "AFTERNOON" ? "Après-midi" : "";
+                        h === "MORNING"
+                          ? "Matin"
+                          : h === "AFTERNOON"
+                            ? "Après-midi"
+                            : "";
                       const halfInfo =
                         sh || eh
                           ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})`
                           : "";
-                      return val == null ? "-" : `${val} jour(s)${halfInfo}`;
+                      return val == null
+                        ? "-"
+                        : `${formatDecimalFr(val)} jour(s)${halfInfo}`;
                     })()}
                   </div>
                 </div>
                 <div className="sm:col-span-2">
-                  <div className="text-xs font-semibold uppercase text-slate-500">Motif</div>
-                  <div className="text-sm text-slate-900">{request.motif || "-"}</div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">
+                    Motif
+                  </div>
+                  <div className="text-sm text-slate-900">
+                    {request.motif || "-"}
+                  </div>
                 </div>
               </div>
 
               <div className="mt-6">
-                <label className="text-sm font-semibold text-slate-700">Commentaire</label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Commentaire
+                </label>
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}

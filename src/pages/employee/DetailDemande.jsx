@@ -7,6 +7,24 @@ import Spinner from "../../components/commun/Spinner";
 import { formaterDate } from "../../utils/calculJours";
 import { libelleAffichageTypeConge } from "../../utils/country";
 
+/**
+ * Formate les nombres décimaux avec virgule française (ex: 7,5 pour 7.5)
+ * Affiche les entiers sans décimales (ex: 7 au lieu de 7,00)
+ */
+const formatDecimalFr = (val) => {
+  if (val == null || !Number.isFinite(Number(val))) return "—";
+  const n = Number(val);
+  // Si c'est un entier, afficher sans décimales
+  if (Math.abs(n - Math.round(n)) < 1e-6) {
+    return String(Math.round(n));
+  }
+  // Pour les décimales, afficher avec virgule française
+  return n.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+};
+
 const normalizeForStatus = (statut) => {
   const raw = String(statut ?? "")
     .trim()
@@ -113,8 +131,12 @@ export default function DetailDemande() {
                     </div>
                     <div className="font-semibold text-slate-900 mt-1">
                       {(() => {
-                        const ap = demandeDetail?.approuvePar ?? demandeDetail?.approvedBy ?? null;
-                        const nm = `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim();
+                        const ap =
+                          demandeDetail?.approuvePar ??
+                          demandeDetail?.approvedBy ??
+                          null;
+                        const nm =
+                          `${ap?.prenom ?? ""} ${ap?.nom ?? ""}`.trim();
                         return nm || ap?.email || "--";
                       })()}
                     </div>
@@ -164,13 +186,25 @@ export default function DetailDemande() {
                               ? raw
                               : Number(raw);
                         const val = Number.isFinite(n) ? n : null;
-                        const sh = String(demandeDetail?.startHalfDay ?? "").toUpperCase();
-                        const eh = String(demandeDetail?.endHalfDay ?? "").toUpperCase();
+                        const sh = String(
+                          demandeDetail?.startHalfDay ?? "",
+                        ).toUpperCase();
+                        const eh = String(
+                          demandeDetail?.endHalfDay ?? "",
+                        ).toUpperCase();
                         const labelHalf = (h) =>
-                          h === "MORNING" ? "Matin" : h === "AFTERNOON" ? "Après-midi" : "";
+                          h === "MORNING"
+                            ? "Matin"
+                            : h === "AFTERNOON"
+                              ? "Après-midi"
+                              : "";
                         const halfInfo =
-                          sh || eh ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})` : "";
-                        return val == null ? "--" : `${val} jour(s)${halfInfo}`;
+                          sh || eh
+                            ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})`
+                            : "";
+                        return val == null
+                          ? "--"
+                          : `${formatDecimalFr(val)} jour(s)${halfInfo}`;
                       })()}
                     </div>
                   </div>

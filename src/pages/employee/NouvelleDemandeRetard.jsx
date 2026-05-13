@@ -62,7 +62,9 @@ export default function NouvelleDemandeRetard() {
         date,
         heureArrivee,
         motif: motif || undefined,
-        approvedByAdminId: approvedByAdminId ? Number(approvedByAdminId) : undefined,
+        approvedByAdminId: approvedByAdminId
+          ? Number(approvedByAdminId)
+          : undefined,
       });
       navigate("/employee/historique");
     } catch {
@@ -114,7 +116,8 @@ export default function NouvelleDemandeRetard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="sm:col-span-2">
               <label className="text-sm font-semibold text-slate-700 block mb-2">
-                Approuvé par {admins.length > 0 && <span className="text-red-500">*</span>}
+                Approuvé par{" "}
+                {admins.length > 0 && <span className="text-red-500">*</span>}
               </label>
               <select
                 value={approvedByAdminId}
@@ -122,11 +125,13 @@ export default function NouvelleDemandeRetard() {
                 className="w-full border border-slate-200 rounded-lg px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">
-                  {admins.length > 0 ? "Sélectionner un Super Admin" : "Super Admins indisponibles (mode compat)"}
+                  {admins.length > 0
+                    ? "Sélectionner un Super Admin"
+                    : "Super Admins indisponibles (mode compat)"}
                 </option>
                 {admins.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {`${a.prenom ?? ""} ${a.nom ?? ""}`.trim() || a.email}
+                    {a.name || a.email}
                   </option>
                 ))}
               </select>

@@ -6,6 +6,24 @@ import Spinner from "../../components/commun/Spinner";
 import StatutBadge from "../../components/employee/StatutBadge";
 import { libelleAffichageTypeConge } from "../../utils/country";
 
+/**
+ * Formate les nombres décimaux avec virgule française (ex: 7,5 pour 7.5)
+ * Affiche les entiers sans décimales (ex: 7 au lieu de 7,00)
+ */
+const formatDecimalFr = (val) => {
+  if (val == null || !Number.isFinite(Number(val))) return "—";
+  const n = Number(val);
+  // Si c'est un entier, afficher sans décimales
+  if (Math.abs(n - Math.round(n)) < 1e-6) {
+    return String(Math.round(n));
+  }
+  // Pour les décimales, afficher avec virgule française
+  return n.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+};
+
 export default function RequestsList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,8 +66,9 @@ export default function RequestsList() {
           className="mt-3 text-sm text-slate-600 fade-in-up max-w-3xl leading-relaxed"
           style={{ animationDelay: "0.05s" }}
         >
-          Toutes les demandes (en attente, approuvées, rejetées). Filtrez par statut ou période, puis exportez au
-          format tableur CSV pour Excel (séparateur ; , encodage UTF-8 avec BOM).
+          Toutes les demandes (en attente, approuvées, rejetées). Filtrez par
+          statut ou période, puis exportez au format tableur CSV pour Excel
+          (séparateur ; , encodage UTF-8 avec BOM).
         </p>
 
         <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm fade-in-up">
@@ -187,7 +206,9 @@ export default function RequestsList() {
                                 ? raw
                                 : Number(raw);
                           const val = Number.isFinite(n) ? n : null;
-                          const sh = String(r?.startHalfDay ?? "").toUpperCase();
+                          const sh = String(
+                            r?.startHalfDay ?? "",
+                          ).toUpperCase();
                           const eh = String(r?.endHalfDay ?? "").toUpperCase();
                           const labelHalf = (h) =>
                             h === "MORNING"
@@ -199,7 +220,9 @@ export default function RequestsList() {
                             sh || eh
                               ? ` (${labelHalf(sh) || "Journée"} → ${labelHalf(eh) || "Journée"})`
                               : "";
-                          return val == null ? "-" : `${val} j${halfInfo}`;
+                          return val == null
+                            ? "-"
+                            : `${formatDecimalFr(val)} j${halfInfo}`;
                         })()}
                       </td>
                       <td className="p-4">
